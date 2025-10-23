@@ -6,7 +6,10 @@ import { FullScreenLoading } from './loadingSpinner'
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
 
 if (!clerkPubKey) {
-  throw new Error('Missing Clerk Publishable Key')
+  throw new Error(
+    'Missing Clerk Publishable Key. Please add VITE_CLERK_PUBLISHABLE_KEY to your .env file. ' +
+    'You can get this key from your Clerk dashboard at https://clerk.com'
+  )
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -21,8 +24,8 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isSignedIn, isLoaded } = useAuth()
 
   if (!isLoaded) return <FullScreenLoading message="Authenticating..." />
-  
   if (!isSignedIn) return <Navigate to="/sign-in" />
 
+  // If signed in, render children (dashboard, etc)
   return <>{children}</>
 }

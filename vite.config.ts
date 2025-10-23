@@ -21,6 +21,6 @@ export default defineConfig({
     },
   },
   define: {
-    'process.env': process.env
+    'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV)
   }
 })
