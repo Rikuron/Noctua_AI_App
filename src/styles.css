@@ -13,3 +13,9 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
     monospace;
 }
+
+
+@theme {
+  --color-primary: #2A88D8;
+  --color-secondary: #5D35B3;
+}
