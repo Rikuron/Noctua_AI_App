@@ -1,35 +1,88 @@
-import { useEffect } from 'react'
-import { useUser } from '@clerk/clerk-react'
-import { signInWithCustomToken } from 'firebase/auth'
+import { useEffect, useState } from 'react'
+import { 
+  type User,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut as firebaseSignout,
+  signInWithPopup,
+  GoogleAuthProvider,
+  onAuthStateChanged
+} from 'firebase/auth'
 import { auth } from '../firebase'
 
 export function useFirebaseAuth() {
-  const { user, isLoaded } = useUser()
+  const [user, setUser] = useState<User | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (isLoaded && user) {
-      // Get Firebase custom token from your backend
-      // You'll need to create an endpoint that generates a custom token
-      // using the Firebase Admin SDK
-      const getFirebaseToken = async () => {
-        try {
-          // This is a placeholder - you'll need to implement this
-          const response = await fetch('/api/firebase-token', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ userId: user.id })
-          })
-          
-          const { token } = await response.json()
-          await signInWithCustomToken(auth, token)
-        } catch (error) {
-          console.error('Error signing in to Firebase:', error)
-        }
-      }
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setUser(user)
+      setLoading(false)
+    })
 
-      getFirebaseToken()
+    return unsubscribe
+  }, [])
+
+  const signIn = async (email: string, password: string) => {
+    try {
+      setError(null)
+      await signInWithEmailAndPassword(auth, email, password)
+    } catch (err: any) {
+      setError(err.message)
+      throw err
+    } 
+  }
+
+  const signUp = async (email: string, password: string) => {
+    try {
+      setError(null)
+      if (!email.endsWith('@g.msuiit.edu.ph')) {
+        throw new Error('Please use your @g.msuiit.edu.ph email.')
+      }
+      await createUserWithEmailAndPassword(auth, email, password)
+    } catch (err: any) {
+      setError(err.message)
+      throw err
     }
-  }, [user, isLoaded])
+  }
+
+  const signInWithGoogle = async () => {
+    try {
+      setError(null)
+      const provider = new GoogleAuthProvider()
+      provider.setCustomParameters({
+        hd: 'g.msuiit.edu.ph'
+      })
+      const result = await signInWithPopup(auth, provider)
+
+      if (!result.user.email?.endsWith('@g.msuiit.edu.ph')) {
+        await firebaseSignout(auth)
+        throw new Error('Please use your @g.msuiit.edu.ph email.')
+      }
+    } catch (err:any) {
+      setError(err.message)
+      throw err
+    }
+  }
+
+  const signOut = async () => {
+    try {
+      setError(null)
+      await firebaseSignout(auth)
+    } catch (err:any) {
+      setError(err.message)
+      throw err
+    }
+  }
+
+  return {
+    user,
+    loading,
+    error,
+    signIn,
+    signUp,
+    signInWithGoogle,
+    signOut
+  }
 }
