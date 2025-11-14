@@ -1,31 +1,42 @@
-import { ClerkProvider } from '@clerk/clerk-react'
-import { useAuth } from '@clerk/clerk-react'
+import { createContext, useContext, type ReactNode } from 'react'
 import { Navigate } from '@tanstack/react-router'
+import { useFirebaseAuth } from '../hooks/useFirebaseAuth'
 import { FullScreenLoading } from './loadingSpinner'
+import type { User } from 'firebase/auth'
 
-const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
-
-if (!clerkPubKey) {
-  throw new Error(
-    'Missing Clerk Publishable Key. Please add VITE_CLERK_PUBLISHABLE_KEY to your .env file. ' +
-    'You can get this key from your Clerk dashboard at https://clerk.com'
-  )
+interface AuthContextType {
+  user: User | null
+  loading: boolean
+  error: string | null
+  signIn: (email: string, password: string) => Promise<void>
+  signUp: (email: string, password: string) => Promise<void>
+  signInWithGoogle: () => Promise<void>
+  signOut: () => Promise<void>
 }
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+const AuthContext = createContext<AuthContextType | undefined>(undefined)
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const auth = useFirebaseAuth()
+
   return (
-    <ClerkProvider publishableKey={clerkPubKey}>
+    <AuthContext.Provider value={auth}>
       {children}
-    </ClerkProvider>
+    </AuthContext.Provider>
   )
 }
 
-export function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isSignedIn, isLoaded } = useAuth()
+export function useAuth() {
+  const context = useContext(AuthContext)
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider')
+  }
+  return context
+}
 
-  if (!isLoaded) return <FullScreenLoading message="Authenticating..." />
-  if (!isSignedIn) return <Navigate to="/sign-in" />
-
-  // If signed in, render children (dashboard, etc)
+export function ProtectedRoute({ children }: { children: ReactNode }) {
+  const { user, loading } = useAuth()
+  if (loading) return <FullScreenLoading message="Authenticating..." />
+  if (!user) return <Navigate to="/sign-in" />
   return <>{children}</>
 }

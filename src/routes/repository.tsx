@@ -1,7 +1,12 @@
 import { useState } from 'react'
 import { createFileRoute, Link } from '@tanstack/react-router'
+import { ProtectedRoute } from '../components/authProvider'
 import { CustomUserButton } from '../components/userButton'
 import { Search, Filter, BookOpen, FileText, Video, Headphones, type LucideIcon } from 'lucide-react'
+
+export const Route = createFileRoute('/repository')({
+  component: MaterialRepository,
+})
 
 interface Material {
   id: number
@@ -238,12 +243,9 @@ function MaterialRepository() {
           </div>
         </div>
       </main>
-    </div>
+    </ProtectedRoute>
   )
 }
-
-export const Route = createFileRoute('/repository')({
-  component: MaterialRepository,
-})
-
-export default MaterialRepository
+  )
+}
+>>>>>>> rikuron/master
