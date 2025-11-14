@@ -12,6 +12,8 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as TestRouteImport } from './routes/test'
 import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as RepositoryRouteImport } from './routes/repository'
+import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as ChatbotRouteImport } from './routes/chatbot'
 import { Route as IndexRouteImport } from './routes/index'
 
 const TestRoute = TestRouteImport.update({
@@ -29,6 +31,16 @@ const RepositoryRoute = RepositoryRouteImport.update({
   path: '/repository',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChatbotRoute = ChatbotRouteImport.update({
+  id: '/chatbot',
+  path: '/chatbot',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -37,12 +49,16 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/chatbot': typeof ChatbotRoute
+  '/dashboard': typeof DashboardRoute
   '/repository': typeof RepositoryRoute
   '/sign-in': typeof SignInRoute
   '/test': typeof TestRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/chatbot': typeof ChatbotRoute
+  '/dashboard': typeof DashboardRoute
   '/repository': typeof RepositoryRoute
   '/sign-in': typeof SignInRoute
   '/test': typeof TestRoute
@@ -50,20 +66,37 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/chatbot': typeof ChatbotRoute
+  '/dashboard': typeof DashboardRoute
   '/repository': typeof RepositoryRoute
   '/sign-in': typeof SignInRoute
   '/test': typeof TestRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/repository' | '/sign-in' | '/test'
+  fullPaths:
+    | '/'
+    | '/chatbot'
+    | '/dashboard'
+    | '/repository'
+    | '/sign-in'
+    | '/test'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/repository' | '/sign-in' | '/test'
-  id: '__root__' | '/' | '/repository' | '/sign-in' | '/test'
+  to: '/' | '/chatbot' | '/dashboard' | '/repository' | '/sign-in' | '/test'
+  id:
+    | '__root__'
+    | '/'
+    | '/chatbot'
+    | '/dashboard'
+    | '/repository'
+    | '/sign-in'
+    | '/test'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ChatbotRoute: typeof ChatbotRoute
+  DashboardRoute: typeof DashboardRoute
   RepositoryRoute: typeof RepositoryRoute
   SignInRoute: typeof SignInRoute
   TestRoute: typeof TestRoute
@@ -92,6 +125,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RepositoryRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/chatbot': {
+      id: '/chatbot'
+      path: '/chatbot'
+      fullPath: '/chatbot'
+      preLoaderRoute: typeof ChatbotRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -104,6 +151,8 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ChatbotRoute: ChatbotRoute,
+  DashboardRoute: DashboardRoute,
   RepositoryRoute: RepositoryRoute,
   SignInRoute: SignInRoute,
   TestRoute: TestRoute,
