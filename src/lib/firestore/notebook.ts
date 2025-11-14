@@ -8,7 +8,6 @@ import {
   deleteDoc,
   query,
   where,
-  orderBy,
   Timestamp,
 } from 'firebase/firestore'
 import { db } from '../../firebase'
@@ -77,8 +76,8 @@ export async function getNotebook(notebookId: string): Promise<Notebook | null> 
 export async function getUserNotebooks(userId: string): Promise<Notebook[]> {
   const q = query(
     notebooksCollection,
-    where('userId', '==', userId),
-    orderBy('createdAt', 'desc')
+    where('userId', '==', userId)
+    // Removed orderBy to avoid index requirement - we'll sort in JavaScript
   )
 
   const querySnapshot = await getDocs(q)
@@ -96,7 +95,8 @@ export async function getUserNotebooks(userId: string): Promise<Notebook[]> {
     })
   })
 
-  return notebooks
+  // Sort in JavaScript instead of Firestore to avoid index requirement
+  return notebooks.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
 }
 
 // Function to update a notebook
