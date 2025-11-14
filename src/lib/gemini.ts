@@ -1,13 +1,10 @@
-import { GoogleGenerativeAI } from '@google/generative-ai'
+import { GoogleGenAI } from '@google/genai'
 
 const apiKey = import.meta.env.VITE_GEMINI_API_KEY
 
 if (!apiKey) throw new Error('Google Gemini API key is not set. Please check your environment variables.')
 
-const genAI = new GoogleGenerativeAI(apiKey)
-
-// Gemini Model
-const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash'})
+const genAI = new GoogleGenAI({ apiKey })
 
 // Function to Generate Summary of Source PDF 
 export async function generateSummary(sourceTexts: string[]): Promise<string> {
@@ -20,8 +17,12 @@ ${combinedText}
 
 Summary:`
 
-  const result = await model.generateContent(prompt)
-  return result.response.text()
+  const response = await genAI.models.generateContent({
+    model: 'gemini-2.0-flash-exp',
+    contents: prompt,
+  })
+
+  return response.text ?? ''
 }
 
 // Function to Chat with Sources
@@ -46,11 +47,15 @@ Current Student Question: ${question}
 
 Answer:`
 
-  const result = await model.generateContent(prompt)
-  return result.response.text()
+  const response = await genAI.models.generateContent({
+    model: 'gemini-2.0-flash-exp',
+    contents: prompt,
+  })
+
+  return response.text ?? ''
 }
 
-// 
+// Function to Stream Chat Response
 export async function streamChatResponse(
   question: string,
   sourceTexts: string[],
@@ -67,10 +72,12 @@ Student Question: ${question}
 
 Answer: `
 
-  const result = await model.generateContentStream(prompt)
+  const stream = await genAI.models.generateContentStream({
+    model: 'gemini-2.0-flash-exp',
+    contents: prompt,
+  })
 
-  for await (const chunk of result.stream) {
-    const chunkText = chunk.text()
-    onChunk(chunkText)
+  for await (const chunk of stream) {
+    if (chunk.text) onChunk(chunk.text)
   }
 }
