@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { ProtectedRoute, useAuth } from '../components/authProvider'
 import { getUserNotebooks } from '../lib/firestore/notebook'
 import type { Notebook } from '../types/notebook'
@@ -13,6 +13,7 @@ function NotebooksHomepage() {
   const { user, signOut } = useAuth()
   const [notebooks, setNotebooks] = useState<Notebook[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [showCreateDialog, setShowCreateDialog] = useState(false)
 
   useEffect(() => {
@@ -24,12 +25,19 @@ function NotebooksHomepage() {
   const loadNotebooks = async () => {
     try {
       setLoading(true)
+      setError(null)
       if (user) {
         const userNotebooks = await getUserNotebooks(user.uid)
         setNotebooks(userNotebooks)
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to load notebooks:', error)
+      if (error.code === 'permission-denied') {
+        setError('Unable to access notebooks. Please configure Firestore security rules.')
+      } else {
+        setError('Failed to load notebooks. Please try again.')
+      }
+      setNotebooks([])
     } finally {
       setLoading(false)
     }
@@ -107,6 +115,35 @@ function NotebooksHomepage() {
             </button>
           </div>
 
+          {/* Error Display */}
+          {error && (
+            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/50 rounded-lg">
+              <div className="flex items-start gap-3">
+                <div className="w-5 h-5 text-red-400 mt-0.5">⚠️</div>
+                <div>
+                  <h4 className="font-medium text-red-400 mb-1">Database Error</h4>
+                  <p className="text-sm text-red-300">{error}</p>
+                  <details className="mt-2 text-xs text-red-200">
+                    <summary className="cursor-pointer hover:text-red-100">Need help fixing this?</summary>
+                    <div className="mt-2 p-3 bg-red-500/5 border border-red-500/20 rounded">
+                      <p className="mb-2">Go to Firebase Console → Firestore Database → Rules and replace with:</p>
+                      <code className="block bg-gray-900 p-2 rounded text-green-400 text-xs">
+                        rules_version = '2';<br/>
+                        service cloud.firestore {'{{'}<br/>
+                        {'  '}match /databases/{'{database}'}/documents {'{{'}<br/>
+                        {'    '}match /{'{document=**}'} {'{{'}<br/>
+                        {'      '}allow read, write: if request.auth != null;<br/>
+                        {'    '}{'}'}<br/>
+                        {'  '}{'}'}<br/>
+                        {'}'}
+                      </code>
+                    </div>
+                  </details>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Notebooks Grid */}
           {loading ? (
             <div className="flex items-center justify-center py-12">
@@ -153,17 +190,24 @@ function NotebooksHomepage() {
               <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-800 rounded-full mb-4">
                 <BookOpen className="w-8 h-8 text-gray-400" />
               </div>
-              <h3 className="text-xl font-semibold mb-2">No notebooks yet</h3>
+              <h3 className="text-xl font-semibold mb-2">
+                {error ? 'Database Configuration Needed' : 'No notebooks yet'}
+              </h3>
               <p className="text-gray-400 mb-6">
-                Create your first notebook to start organizing your study materials
+                {error 
+                  ? 'Configure Firestore security rules to start using notebooks'
+                  : 'Create your first notebook to start organizing your study materials'
+                }
               </p>
-              <button
-                onClick={() => setShowCreateDialog(true)}
-                className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                Create Your First Notebook
-              </button>
+              {!error && (
+                <button
+                  onClick={() => setShowCreateDialog(true)}
+                  className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  Create Your First Notebook
+                </button>
+              )}
             </div>
           )}
         </main>
