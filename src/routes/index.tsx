@@ -117,7 +117,8 @@ function NotebooksHomepage() {
               {notebooks.map((notebook) => (
                 <Link
                   key={notebook.id}
-                  to="/repository"
+                  to="/notebook/$notebookId"
+                  params={{ notebookId: notebook.id }}
                   className="group block"
                 >
                   <div className="bg-gray-800 rounded-xl p-6 border border-gray-700 hover:border-gray-600 transition-all duration-200 hover:shadow-lg hover:transform hover:scale-[1.02]">
@@ -187,6 +188,7 @@ function CreateNotebookDialog({ onClose, onSuccess }: {
   onSuccess: () => void 
 }) {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [loading, setLoading] = useState(false)
@@ -201,11 +203,12 @@ function CreateNotebookDialog({ onClose, onSuccess }: {
 
     try {
       const { createNotebook } = await import('../lib/firestore/notebook')
-      await createNotebook(user.uid, {
+      const notebookId = await createNotebook(user.uid, {
         name: name.trim(),
         description: description.trim()
       })
-      onSuccess()
+      onClose()
+      navigate({ to: '/notebook/$notebookId', params: { notebookId } })
     } catch (err: any) {
       setError(err.message || 'Failed to create notebook')
     } finally {

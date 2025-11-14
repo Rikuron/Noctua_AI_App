@@ -15,6 +15,7 @@ import { Route as RepositoryRouteImport } from './routes/repository'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ChatbotRouteImport } from './routes/chatbot'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as NotebookNotebookIdRouteImport } from './routes/notebook.$notebookId'
 
 const TestRoute = TestRouteImport.update({
   id: '/test',
@@ -46,6 +47,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const NotebookNotebookIdRoute = NotebookNotebookIdRouteImport.update({
+  id: '/notebook/$notebookId',
+  path: '/notebook/$notebookId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -54,6 +60,7 @@ export interface FileRoutesByFullPath {
   '/repository': typeof RepositoryRoute
   '/sign-in': typeof SignInRoute
   '/test': typeof TestRoute
+  '/notebook/$notebookId': typeof NotebookNotebookIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -62,6 +69,7 @@ export interface FileRoutesByTo {
   '/repository': typeof RepositoryRoute
   '/sign-in': typeof SignInRoute
   '/test': typeof TestRoute
+  '/notebook/$notebookId': typeof NotebookNotebookIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -71,6 +79,7 @@ export interface FileRoutesById {
   '/repository': typeof RepositoryRoute
   '/sign-in': typeof SignInRoute
   '/test': typeof TestRoute
+  '/notebook/$notebookId': typeof NotebookNotebookIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -81,8 +90,16 @@ export interface FileRouteTypes {
     | '/repository'
     | '/sign-in'
     | '/test'
+    | '/notebook/$notebookId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/chatbot' | '/dashboard' | '/repository' | '/sign-in' | '/test'
+  to:
+    | '/'
+    | '/chatbot'
+    | '/dashboard'
+    | '/repository'
+    | '/sign-in'
+    | '/test'
+    | '/notebook/$notebookId'
   id:
     | '__root__'
     | '/'
@@ -91,6 +108,7 @@ export interface FileRouteTypes {
     | '/repository'
     | '/sign-in'
     | '/test'
+    | '/notebook/$notebookId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -100,6 +118,7 @@ export interface RootRouteChildren {
   RepositoryRoute: typeof RepositoryRoute
   SignInRoute: typeof SignInRoute
   TestRoute: typeof TestRoute
+  NotebookNotebookIdRoute: typeof NotebookNotebookIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -146,6 +165,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/notebook/$notebookId': {
+      id: '/notebook/$notebookId'
+      path: '/notebook/$notebookId'
+      fullPath: '/notebook/$notebookId'
+      preLoaderRoute: typeof NotebookNotebookIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -156,6 +182,7 @@ const rootRouteChildren: RootRouteChildren = {
   RepositoryRoute: RepositoryRoute,
   SignInRoute: SignInRoute,
   TestRoute: TestRoute,
+  NotebookNotebookIdRoute: NotebookNotebookIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
