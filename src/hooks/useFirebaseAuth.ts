@@ -7,7 +7,7 @@ export function useFirebaseAuth() {
   const { user, isLoaded } = useUser()
 
   useEffect(() => {
-    if (isLoaded && user) {
+    if (isLoaded && user && auth) {
       // Get Firebase custom token from your backend
       // You'll need to create an endpoint that generates a custom token
       // using the Firebase Admin SDK
