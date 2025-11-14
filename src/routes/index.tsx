@@ -29,8 +29,41 @@ function NotebooksHomepage() {
       setLoading(true)
       setError(null)
       if (user) {
-        const userNotebooks = await getUserNotebooks(user.uid)
-        setNotebooks(userNotebooks)
+        // MOCK DATA for visual testing - replace with real Firebase later
+        const mockNotebooks: Notebook[] = [
+          {
+            id: 'mock-1',
+            userId: user.uid,
+            name: 'Physics Study Notes',
+            description: 'Quantum mechanics and thermodynamics',
+            createdAt: new Date('2024-11-10'),
+            updatedAt: new Date('2024-11-10')
+          },
+          {
+            id: 'mock-2', 
+            userId: user.uid,
+            name: 'CS Research Paper',
+            description: 'Machine learning algorithms and neural networks',
+            createdAt: new Date('2024-11-08'),
+            updatedAt: new Date('2024-11-09')
+          },
+          {
+            id: 'mock-3',
+            userId: user.uid, 
+            name: 'History Essays',
+            description: '',
+            createdAt: new Date('2024-11-05'),
+            updatedAt: new Date('2024-11-06')
+          }
+        ]
+        
+        // Simulate loading delay
+        await new Promise(resolve => setTimeout(resolve, 500))
+        setNotebooks(mockNotebooks)
+        
+        // TODO: Replace with real Firebase call later
+        // const userNotebooks = await getUserNotebooks(user.uid)
+        // setNotebooks(userNotebooks)
       }
     } catch (error: any) {
       console.error('Failed to load notebooks:', error)
@@ -50,13 +83,22 @@ function NotebooksHomepage() {
     
     setCreating(true)
     try {
-      const { createNotebook } = await import('../lib/firestore/notebook')
-      const notebookId = await createNotebook(user.uid, {
-        name: 'Untitled notebook',
-        description: ''
-      })
-      // Navigate directly to the new notebook
-      navigate({ to: '/notebook/$notebookId', params: { notebookId } })
+      // MOCK notebook creation for visual testing
+      const mockNotebookId = `mock-${Date.now()}`
+      
+      // Simulate creation delay
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      
+      // Navigate to mock notebook detail page
+      navigate({ to: '/notebook/$notebookId', params: { notebookId: mockNotebookId } })
+      
+      // TODO: Replace with real Firebase call later
+      // const { createNotebook } = await import('../lib/firestore/notebook')
+      // const notebookId = await createNotebook(user.uid, {
+      //   name: 'Untitled notebook',
+      //   description: ''
+      // })
+      // navigate({ to: '/notebook/$notebookId', params: { notebookId } })
     } catch (error: any) {
       console.error('Failed to create notebook:', error)
       // Fallback to dialog if direct creation fails
