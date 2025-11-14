@@ -11,10 +11,12 @@ export const Route = createFileRoute('/')({
 
 function NotebooksHomepage() {
   const { user, signOut } = useAuth()
+  const navigate = useNavigate()
   const [notebooks, setNotebooks] = useState<Notebook[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showCreateDialog, setShowCreateDialog] = useState(false)
+  const [creating, setCreating] = useState(false)
 
   useEffect(() => {
     if (user) {
@@ -40,6 +42,27 @@ function NotebooksHomepage() {
       setNotebooks([])
     } finally {
       setLoading(false)
+    }
+  }
+
+  const createNewNotebook = async () => {
+    if (!user || creating) return
+    
+    setCreating(true)
+    try {
+      const { createNotebook } = await import('../lib/firestore/notebook')
+      const notebookId = await createNotebook(user.uid, {
+        name: 'Untitled notebook',
+        description: ''
+      })
+      // Navigate directly to the new notebook
+      navigate({ to: '/notebook/$notebookId', params: { notebookId } })
+    } catch (error: any) {
+      console.error('Failed to create notebook:', error)
+      // Fallback to dialog if direct creation fails
+      setShowCreateDialog(true)
+    } finally {
+      setCreating(false)
     }
   }
 
@@ -107,11 +130,12 @@ function NotebooksHomepage() {
             </div>
             
             <button
-              onClick={() => setShowCreateDialog(true)}
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+              onClick={createNewNotebook}
+              disabled={creating}
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg transition-colors"
             >
               <Plus className="w-4 h-4" />
-              New Notebook
+              {creating ? 'Creating...' : 'New Notebook'}
             </button>
           </div>
 
@@ -201,11 +225,12 @@ function NotebooksHomepage() {
               </p>
               {!error && (
                 <button
-                  onClick={() => setShowCreateDialog(true)}
-                  className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-colors"
+                  onClick={createNewNotebook}
+                  disabled={creating}
+                  className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-3 rounded-lg transition-colors"
                 >
                   <Plus className="w-4 h-4" />
-                  Create Your First Notebook
+                  {creating ? 'Creating...' : 'Create Your First Notebook'}
                 </button>
               )}
             </div>
