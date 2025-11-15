@@ -9,14 +9,19 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TestRouteRouteImport } from './routes/test-route'
 import { Route as TestRouteImport } from './routes/test'
 import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as RepositoryRouteImport } from './routes/repository'
-import { Route as DashboardRouteImport } from './routes/dashboard'
-import { Route as ChatbotRouteImport } from './routes/chatbot'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as NotebookNotebookIdRouteImport } from './routes/notebook.$notebookId'
 
+const TestRouteRoute = TestRouteRouteImport.update({
+  id: '/test-route',
+  path: '/test-route',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TestRoute = TestRouteImport.update({
   id: '/test',
   path: '/test',
@@ -32,14 +37,9 @@ const RepositoryRoute = RepositoryRouteImport.update({
   path: '/repository',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DashboardRoute = DashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ChatbotRoute = ChatbotRouteImport.update({
-  id: '/chatbot',
-  path: '/chatbot',
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -55,74 +55,81 @@ const NotebookNotebookIdRoute = NotebookNotebookIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/chatbot': typeof ChatbotRoute
-  '/dashboard': typeof DashboardRoute
+  '/admin': typeof AdminRoute
   '/repository': typeof RepositoryRoute
   '/sign-in': typeof SignInRoute
   '/test': typeof TestRoute
+  '/test-route': typeof TestRouteRoute
   '/notebook/$notebookId': typeof NotebookNotebookIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/chatbot': typeof ChatbotRoute
-  '/dashboard': typeof DashboardRoute
+  '/admin': typeof AdminRoute
   '/repository': typeof RepositoryRoute
   '/sign-in': typeof SignInRoute
   '/test': typeof TestRoute
+  '/test-route': typeof TestRouteRoute
   '/notebook/$notebookId': typeof NotebookNotebookIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/chatbot': typeof ChatbotRoute
-  '/dashboard': typeof DashboardRoute
+  '/admin': typeof AdminRoute
   '/repository': typeof RepositoryRoute
   '/sign-in': typeof SignInRoute
   '/test': typeof TestRoute
+  '/test-route': typeof TestRouteRoute
   '/notebook/$notebookId': typeof NotebookNotebookIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/chatbot'
-    | '/dashboard'
+    | '/admin'
     | '/repository'
     | '/sign-in'
     | '/test'
+    | '/test-route'
     | '/notebook/$notebookId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/chatbot'
-    | '/dashboard'
+    | '/admin'
     | '/repository'
     | '/sign-in'
     | '/test'
+    | '/test-route'
     | '/notebook/$notebookId'
   id:
     | '__root__'
     | '/'
-    | '/chatbot'
-    | '/dashboard'
+    | '/admin'
     | '/repository'
     | '/sign-in'
     | '/test'
+    | '/test-route'
     | '/notebook/$notebookId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  ChatbotRoute: typeof ChatbotRoute
-  DashboardRoute: typeof DashboardRoute
+  AdminRoute: typeof AdminRoute
   RepositoryRoute: typeof RepositoryRoute
   SignInRoute: typeof SignInRoute
   TestRoute: typeof TestRoute
+  TestRouteRoute: typeof TestRouteRoute
   NotebookNotebookIdRoute: typeof NotebookNotebookIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/test-route': {
+      id: '/test-route'
+      path: '/test-route'
+      fullPath: '/test-route'
+      preLoaderRoute: typeof TestRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/test': {
       id: '/test'
       path: '/test'
@@ -144,18 +151,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RepositoryRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/dashboard': {
-      id: '/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof DashboardRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/chatbot': {
-      id: '/chatbot'
-      path: '/chatbot'
-      fullPath: '/chatbot'
-      preLoaderRoute: typeof ChatbotRouteImport
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -177,11 +177,11 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  ChatbotRoute: ChatbotRoute,
-  DashboardRoute: DashboardRoute,
+  AdminRoute: AdminRoute,
   RepositoryRoute: RepositoryRoute,
   SignInRoute: SignInRoute,
   TestRoute: TestRoute,
+  TestRouteRoute: TestRouteRoute,
   NotebookNotebookIdRoute: NotebookNotebookIdRoute,
 }
 export const routeTree = rootRouteImport

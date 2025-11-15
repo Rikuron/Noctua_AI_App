@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { X, Upload } from 'lucide-react'
+import { CustomScrollbarStyles } from './CustomScrollbar'
 
 interface UploadSourcesModalProps {
   isOpen: boolean
@@ -9,6 +10,7 @@ interface UploadSourcesModalProps {
 
 export function UploadSourcesModal({ isOpen, onClose, onUpload }: UploadSourcesModalProps) {
   const [dragActive, setDragActive] = useState(false)
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
 
   if (!isOpen) return null
 
@@ -33,15 +35,25 @@ export function UploadSourcesModal({ isOpen, onClose, onUpload }: UploadSourcesM
     e.preventDefault()
     e.stopPropagation()
     setDragActive(false)
-    
     const files = Array.from(e.dataTransfer.files)
-    console.log('Dropped files:', files)
-    // TODO: Handle file upload
+    setSelectedFiles(files)
+    if (files.length > 0) {
+      onUpload(files)
+    }
+  }
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files ? Array.from(e.target.files) : []
+    setSelectedFiles(files)
+    if (files.length > 0) {
+      onUpload(files)
+    }
   }
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-gray-800 rounded-2xl w-full max-w-2xl border border-gray-600 max-h-[90vh] overflow-y-auto shadow-2xl">
+      <CustomScrollbarStyles />
+      <div className="bg-gray-800 rounded-2xl w-full max-w-2xl border border-gray-600 max-h-[90vh] overflow-y-auto custom-scrollbar shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-700">
           <div className="flex items-center gap-3">
@@ -49,7 +61,7 @@ export function UploadSourcesModal({ isOpen, onClose, onUpload }: UploadSourcesM
               <span className="text-white font-semibold">📄</span>
             </div>
             <div>
-              <h2 className="text-xl font-semibold">NotebookLM</h2>
+              <h2 className="text-xl font-semibold">Noctua Ai</h2>
             </div>
           </div>
           <button
@@ -69,8 +81,7 @@ export function UploadSourcesModal({ isOpen, onClose, onUpload }: UploadSourcesM
           </div>
           
           <p className="text-sm text-gray-400 mb-6">
-            Sources let NotebookLM base its responses on the information that matters most to you.<br/>
-            (Examples: marketing plans, course reading, research notes, meeting transcripts, sales documents, etc.)
+            Sources let Noctua Ai base its responses on the information that matters most to you.<br/>
           </p>
 
           {/* Upload Area */}
@@ -90,11 +101,31 @@ export function UploadSourcesModal({ isOpen, onClose, onUpload }: UploadSourcesM
             </div>
             <h3 className="text-lg font-medium mb-2">Upload sources</h3>
             <p className="text-sm text-gray-400 mb-4">
-              Drag & drop or <button className="text-blue-400 underline hover:text-blue-300">choose file</button> to upload
+              Drag & drop or{' '}
+              <label className="text-blue-400 underline hover:text-blue-300 cursor-pointer">
+                choose file
+                <input
+                  type="file"
+                  multiple
+                  className="hidden"
+                  onChange={handleFileChange}
+                  accept=".pdf,.txt,.md,.mp3,.docx,.avif,.bmp,.gif,.ico,.jp2,.png,.webp,.tif,.tiff,.heic,.heif,.jpeg,.jpg,.jpe"
+                />
+              </label>{' '}to upload
             </p>
             <p className="text-xs text-gray-500">
               Supported file types: PDF, .txt, Markdown, Audio (e.g. mp3), .docx, .avif, .bmp, .gif, .ico, .jp2, .png, .webp, .tif, .tiff, .heic, .heif, .jpeg, .jpg, .jpe
             </p>
+            {selectedFiles.length > 0 && (
+              <div className="mt-4 text-left">
+                <h4 className="text-sm font-semibold mb-2">Selected files:</h4>
+                <ul className="list-disc ml-6 text-xs text-gray-300">
+                  {selectedFiles.map((file, idx) => (
+                    <li key={idx}>{file.name}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
 
           {/* Source Options */}

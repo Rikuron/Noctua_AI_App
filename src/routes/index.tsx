@@ -1,21 +1,23 @@
 import { useState, useEffect } from 'react'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { ProtectedRoute, useAuth } from '../components/authProvider'
+import { Navigation } from '../components/navigation'
 import { getUserNotebooks } from '../lib/firestore/notebook'
+import { getNotebookSources } from '../lib/firestore/sources'
 import type { Notebook } from '../types/notebook'
-import { Plus, BookOpen, Clock, User } from 'lucide-react'
+import { Plus, BookOpen, Clock, FileText } from 'lucide-react'
 
 export const Route = createFileRoute('/')({
   component: NotebooksHomepage,
 })
 
 function NotebooksHomepage() {
-  const { user, signOut } = useAuth()
+  const { user } = useAuth()
   const navigate = useNavigate()
   const [notebooks, setNotebooks] = useState<Notebook[]>([])
+  const [sourceCounts, setSourceCounts] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [creating, setCreating] = useState(false)
 
   useEffect(() => {
@@ -29,41 +31,44 @@ function NotebooksHomepage() {
       setLoading(true)
       setError(null)
       if (user) {
-        // MOCK DATA for visual testing - replace with real Firebase later
-        const mockNotebooks: Notebook[] = [
-          {
-            id: 'mock-1',
-            userId: user.uid,
-            name: 'Physics Study Notes',
-            description: 'Quantum mechanics and thermodynamics',
-            createdAt: new Date('2024-11-10'),
-            updatedAt: new Date('2024-11-10')
-          },
-          {
-            id: 'mock-2', 
-            userId: user.uid,
-            name: 'CS Research Paper',
-            description: 'Machine learning algorithms and neural networks',
-            createdAt: new Date('2024-11-08'),
-            updatedAt: new Date('2024-11-09')
-          },
-          {
-            id: 'mock-3',
-            userId: user.uid, 
-            name: 'History Essays',
-            description: '',
-            createdAt: new Date('2024-11-05'),
-            updatedAt: new Date('2024-11-06')
+        const userNotebooks = await getUserNotebooks(user.uid)
+        
+        // Filter out any "Untitled notebook" entries to save costs
+        const filteredNotebooks = userNotebooks.filter(notebook => 
+          notebook.name !== 'Untitled notebook' || notebook.description !== ''
+        )
+        setNotebooks(filteredNotebooks)
+        
+        // Delete untitled notebooks that have no description to save costs
+        const untitledNotebooks = userNotebooks.filter(notebook => 
+          notebook.name === 'Untitled notebook' && notebook.description === ''
+        )
+        
+        if (untitledNotebooks.length > 0) {
+          console.log(`Cleaning up ${untitledNotebooks.length} empty untitled notebooks to save costs...`)
+          for (const notebook of untitledNotebooks) {
+            try {
+              const { deleteNotebook } = await import('../lib/firestore/notebook')
+              await deleteNotebook(notebook.id)
+              console.log(`Deleted empty notebook: ${notebook.id}`)
+            } catch (err) {
+              console.error(`Failed to delete notebook ${notebook.id}:`, err)
+            }
           }
-        ]
+        }
         
-        // Simulate loading delay
-        await new Promise(resolve => setTimeout(resolve, 500))
-        setNotebooks(mockNotebooks)
-        
-        // TODO: Replace with real Firebase call later
-        // const userNotebooks = await getUserNotebooks(user.uid)
-        // setNotebooks(userNotebooks)
+        // Load source counts for remaining notebooks
+        const counts: Record<string, number> = {}
+        for (const notebook of filteredNotebooks) {
+          try {
+            const sources = await getNotebookSources(notebook.id)
+            counts[notebook.id] = sources.length
+          } catch (error) {
+            console.error(`Error loading sources for notebook ${notebook.id}:`, error)
+            counts[notebook.id] = 0
+          }
+        }
+        setSourceCounts(counts)
       }
     } catch (error: any) {
       console.error('Failed to load notebooks:', error)
@@ -83,26 +88,21 @@ function NotebooksHomepage() {
     
     setCreating(true)
     try {
-      // MOCK notebook creation for visual testing
-      const mockNotebookId = `mock-${Date.now()}`
+      const { createNotebook } = await import('../lib/firestore/notebook')
+      const notebookId = await createNotebook(user.uid, {
+        name: 'New Workspace',
+        description: 'Your document workspace'
+      })
       
-      // Simulate creation delay
+      console.log('Created notebook with ID:', notebookId)
+      
+      // Wait a moment for Firebase to fully commit the write
       await new Promise(resolve => setTimeout(resolve, 1000))
       
-      // Navigate to mock notebook detail page
-      navigate({ to: '/notebook/$notebookId', params: { notebookId: mockNotebookId } })
-      
-      // TODO: Replace with real Firebase call later
-      // const { createNotebook } = await import('../lib/firestore/notebook')
-      // const notebookId = await createNotebook(user.uid, {
-      //   name: 'Untitled notebook',
-      //   description: ''
-      // })
-      // navigate({ to: '/notebook/$notebookId', params: { notebookId } })
+      navigate({ to: '/notebook/$notebookId', params: { notebookId } })
     } catch (error: any) {
       console.error('Failed to create notebook:', error)
-      // Fallback to dialog if direct creation fails
-      setShowCreateDialog(true)
+      setError('Failed to create notebook. Please try again.')
     } finally {
       setCreating(false)
     }
@@ -119,43 +119,14 @@ function NotebooksHomepage() {
   return (
     <ProtectedRoute>
       <div className="min-h-screen bg-[#1a1a1a] text-white">
-        {/* Header */}
-        <header className="border-b border-gray-800 bg-[#0f0f0f]">
-          <div className="max-w-7xl mx-auto px-6 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <img src="/logo512.png" alt="Noctua AI" className="w-8 h-8" />
-                <h1 className="text-xl font-semibold">Noctua AI</h1>
-              </div>
-              
-              <div className="flex items-center gap-4">
-                <Link 
-                  to="/test" 
-                  className="text-sm text-gray-400 hover:text-white transition-colors"
-                >
-                  API Test
-                </Link>
-                <div className="flex items-center gap-2 text-sm text-gray-400">
-                  <User className="w-4 h-4" />
-                  {user?.email}
-                </div>
-                <button
-                  onClick={signOut}
-                  className="text-sm text-gray-400 hover:text-red-400 transition-colors"
-                >
-                  Sign out
-                </button>
-              </div>
-            </div>
-          </div>
-        </header>
+        <Navigation currentPage="notebooks" />
 
         {/* Main Content */}
         <main className="max-w-7xl mx-auto px-6 py-8">
           {/* Welcome Section */}
           <div className="mb-8">
             <h2 className="text-3xl font-bold mb-2">
-              Welcome back{user?.displayName ? `, ${user.displayName}` : ''}
+              Welcome back{user?.displayName ? `, ${user.displayName}` : ``}
             </h2>
             <p className="text-gray-400">
               Create and organize your study materials with AI-powered insights
@@ -165,9 +136,9 @@ function NotebooksHomepage() {
           {/* Actions Bar */}
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-4">
-              <h3 className="text-xl font-semibold">Your Notebooks</h3>
+              <h3 className="text-xl font-semibold">Your Workspaces</h3>
               <span className="text-sm text-gray-400 bg-gray-800 px-2 py-1 rounded-full">
-                {notebooks.length} {notebooks.length === 1 ? 'notebook' : 'notebooks'}
+                {notebooks.length} {notebooks.length === 1 ? 'workspace' : 'workspaces'}
               </span>
             </div>
             
@@ -189,22 +160,6 @@ function NotebooksHomepage() {
                 <div>
                   <h4 className="font-medium text-red-400 mb-1">Database Error</h4>
                   <p className="text-sm text-red-300">{error}</p>
-                  <details className="mt-2 text-xs text-red-200">
-                    <summary className="cursor-pointer hover:text-red-100">Need help fixing this?</summary>
-                    <div className="mt-2 p-3 bg-red-500/5 border border-red-500/20 rounded">
-                      <p className="mb-2">Go to Firebase Console → Firestore Database → Rules and replace with:</p>
-                      <code className="block bg-gray-900 p-2 rounded text-green-400 text-xs">
-                        rules_version = '2';<br/>
-                        service cloud.firestore {'{{'}<br/>
-                        {'  '}match /databases/{'{database}'}/documents {'{{'}<br/>
-                        {'    '}match /{'{document=**}'} {'{{'}<br/>
-                        {'      '}allow read, write: if request.auth != null;<br/>
-                        {'    '}{'}'}<br/>
-                        {'  '}{'}'}<br/>
-                        {'}'}
-                      </code>
-                    </div>
-                  </details>
                 </div>
               </div>
             </div>
@@ -244,8 +199,11 @@ function NotebooksHomepage() {
                     </p>
                     
                     <div className="flex items-center justify-between text-xs text-gray-500">
-                      <span>0 sources</span>
-                      <span>0 chats</span>
+                      <div className="flex items-center gap-1">
+                        <FileText className="w-3 h-3" />
+                        <span>{sourceCounts[notebook.id] || 0} documents</span>
+                      </div>
+                      <span className="text-gray-600">Workspace</span>
                     </div>
                   </div>
                 </Link>
@@ -257,12 +215,12 @@ function NotebooksHomepage() {
                 <BookOpen className="w-8 h-8 text-gray-400" />
               </div>
               <h3 className="text-xl font-semibold mb-2">
-                {error ? 'Database Configuration Needed' : 'No notebooks yet'}
+                {error ? 'Database Configuration Needed' : 'No workspaces yet'}
               </h3>
               <p className="text-gray-400 mb-6">
                 {error 
                   ? 'Configure Firestore security rules to start using notebooks'
-                  : 'Create your first notebook to start organizing your study materials'
+                  : 'Create your first workspace to upload and organize documents with AI'
                 }
               </p>
               {!error && (
@@ -272,117 +230,14 @@ function NotebooksHomepage() {
                   className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-3 rounded-lg transition-colors"
                 >
                   <Plus className="w-4 h-4" />
-                  {creating ? 'Creating...' : 'Create Your First Notebook'}
+                  {creating ? 'Creating...' : 'Create Your First Workspace'}
                 </button>
               )}
             </div>
           )}
         </main>
-
-        {/* Create Notebook Dialog */}
-        {showCreateDialog && (
-          <CreateNotebookDialog
-            onClose={() => setShowCreateDialog(false)}
-            onSuccess={() => {
-              setShowCreateDialog(false)
-              loadNotebooks()
-            }}
-          />
-        )}
       </div>
     </ProtectedRoute>
-  )
-}
-
-function CreateNotebookDialog({ onClose, onSuccess }: { 
-  onClose: () => void
-  onSuccess: () => void 
-}) {
-  const { user } = useAuth()
-  const navigate = useNavigate()
-  const [name, setName] = useState('')
-  const [description, setDescription] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!user || !name.trim()) return
-
-    setLoading(true)
-    setError(null)
-
-    try {
-      const { createNotebook } = await import('../lib/firestore/notebook')
-      const notebookId = await createNotebook(user.uid, {
-        name: name.trim(),
-        description: description.trim()
-      })
-      onClose()
-      navigate({ to: '/notebook/$notebookId', params: { notebookId } })
-    } catch (err: any) {
-      setError(err.message || 'Failed to create notebook')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-gray-800 rounded-xl p-6 w-full max-w-md border border-gray-700">
-        <h3 className="text-lg font-semibold mb-4">Create New Notebook</h3>
-        
-        {error && (
-          <div className="mb-4 p-3 bg-red-500/10 border border-red-500/50 rounded-lg text-red-400 text-sm">
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-2">Notebook Name</label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g., Physics Study Notes"
-              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              required
-              maxLength={100}
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium mb-2">Description (Optional)</label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="What will you study in this notebook?"
-              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 h-20 resize-none"
-              maxLength={500}
-            />
-          </div>
-
-          <div className="flex gap-3 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 px-4 py-2 text-gray-400 hover:text-white transition-colors"
-              disabled={loading}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={loading || !name.trim()}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg transition-colors"
-            >
-              {loading ? 'Creating...' : 'Create Notebook'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
   )
 }
 

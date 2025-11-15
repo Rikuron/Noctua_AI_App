@@ -34,7 +34,7 @@ export function CustomUserButton() {
       </button>
 
       {isOpen && (
-        <div className="absolute bottom-full mb-2 left-0 w-64 bg-gray-800 border border-gray-700 rounded-lg shadow-xl overflow-hidden">
+        <div className="absolute top-full mt-2 right-0 left-auto min-w-[200px] w-64 bg-gray-800 border border-gray-700 rounded-lg shadow-xl overflow-hidden z-50">
           <div className="p-4 border-b border-gray-700">
             <p className="text-sm font-medium text-white truncate">{user.email}</p>
             <p className="text-xs text-gray-400 mt-1">MSU-IIT Student</p>
