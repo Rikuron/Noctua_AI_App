@@ -8,7 +8,6 @@ import {
   deleteDoc,
   query,
   where,
-  orderBy,
   Timestamp,
 } from 'firebase/firestore'
 import { db } from '../../firebase'
@@ -23,16 +22,36 @@ export async function createNotebook(
   userId: string,
   input: NotebookInput
 ): Promise<string> {
-  // Add a new notebook document to the notebooks collection
-  const docRef = await addDoc(notebooksCollection, {
-    userId,
-    name: input.name,
-    description: input.description,
-    createdAt: Timestamp.now(),
-    updatedAt: Timestamp.now()
-  })
+  try {
+    // Check if db is available
+    if (!db) {
+      throw new Error('Firebase not initialized. Please check your configuration.')
+    }
 
-  return docRef.id
+    // Add a new notebook document to the notebooks collection
+    const docRef = await addDoc(notebooksCollection, {
+      userId,
+      name: input.name,
+      description: input.description,
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now()
+    })
+
+    return docRef.id
+  } catch (error: any) {
+    console.error('Error creating notebook:', error)
+    
+    // Handle specific Firebase errors
+    if (error.code === 'permission-denied') {
+      throw new Error('You do not have permission to create notebooks. Please ensure you are properly authenticated.')
+    } else if (error.code === 'unauthenticated') {
+      throw new Error('You must be signed in to create notebooks.')
+    } else if (error.code === 'unavailable') {
+      throw new Error('Service temporarily unavailable. Please try again later.')
+    } else {
+      throw new Error(`Failed to create notebook: ${error.message}`)
+    }
+  }
 }
 
 // Function to fetch Notebook by ID
@@ -57,8 +76,8 @@ export async function getNotebook(notebookId: string): Promise<Notebook | null> 
 export async function getUserNotebooks(userId: string): Promise<Notebook[]> {
   const q = query(
     notebooksCollection,
-    where('userId', '==', userId),
-    orderBy('createdAt', 'desc')
+    where('userId', '==', userId)
+    // Removed orderBy to avoid index requirement - we'll sort in JavaScript
   )
 
   const querySnapshot = await getDocs(q)
@@ -76,7 +95,8 @@ export async function getUserNotebooks(userId: string): Promise<Notebook[]> {
     })
   })
 
-  return notebooks
+  // Sort in JavaScript instead of Firestore to avoid index requirement
+  return notebooks.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
 }
 
 // Function to update a notebook

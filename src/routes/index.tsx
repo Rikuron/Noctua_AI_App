@@ -1,149 +1,244 @@
-import { useState } from 'react'
-import { createFileRoute } from '@tanstack/react-router'
-import { ProtectedRoute } from '../components/authProvider'
-import { Sidebar } from '../components/sidebar'
+import { useState, useEffect } from 'react'
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
+import { ProtectedRoute, useAuth } from '../components/authProvider'
+import { Navigation } from '../components/navigation'
+import { getUserNotebooks } from '../lib/firestore/notebook'
+import { getNotebookSources } from '../lib/firestore/sources'
+import type { Notebook } from '../types/notebook'
+import { Plus, BookOpen, Clock, FileText } from 'lucide-react'
 
 export const Route = createFileRoute('/')({
-  component: App,
+  component: NotebooksHomepage,
 })
 
-function App() {
-  const [input, setInput] = useState('')
-  const [messages, setMessages] = useState<{ role: string; content: string }[]>([])
+function NotebooksHomepage() {
+  const { user } = useAuth()
+  const navigate = useNavigate()
+  const [notebooks, setNotebooks] = useState<Notebook[]>([])
+  const [sourceCounts, setSourceCounts] = useState<Record<string, number>>({})
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [creating, setCreating] = useState(false)
 
-  const handleSubmitMessage = () => {
-    if (!input.trim()) return
+  useEffect(() => {
+    if (user) {
+      loadNotebooks()
+    }
+  }, [user])
 
-    setMessages([...messages, { role: 'user', content: input }])
-    setInput('')
-
-    // Simulate AI response
-    setTimeout(() => {
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: 'I\'m a demo interface. In a real implementation, this would be connected to an AI model.'
-      }])
-    }, 1000)
+  const loadNotebooks = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      if (user) {
+        const userNotebooks = await getUserNotebooks(user.uid)
+        
+        // Filter out any "Untitled notebook" entries to save costs
+        const filteredNotebooks = userNotebooks.filter(notebook => 
+          notebook.name !== 'Untitled notebook' || notebook.description !== ''
+        )
+        setNotebooks(filteredNotebooks)
+        
+        // Delete untitled notebooks that have no description to save costs
+        const untitledNotebooks = userNotebooks.filter(notebook => 
+          notebook.name === 'Untitled notebook' && notebook.description === ''
+        )
+        
+        if (untitledNotebooks.length > 0) {
+          console.log(`Cleaning up ${untitledNotebooks.length} empty untitled notebooks to save costs...`)
+          for (const notebook of untitledNotebooks) {
+            try {
+              const { deleteNotebook } = await import('../lib/firestore/notebook')
+              await deleteNotebook(notebook.id)
+              console.log(`Deleted empty notebook: ${notebook.id}`)
+            } catch (err) {
+              console.error(`Failed to delete notebook ${notebook.id}:`, err)
+            }
+          }
+        }
+        
+        // Load source counts for remaining notebooks
+        const counts: Record<string, number> = {}
+        for (const notebook of filteredNotebooks) {
+          try {
+            const sources = await getNotebookSources(notebook.id)
+            counts[notebook.id] = sources.length
+          } catch (error) {
+            console.error(`Error loading sources for notebook ${notebook.id}:`, error)
+            counts[notebook.id] = 0
+          }
+        }
+        setSourceCounts(counts)
+      }
+    } catch (error: any) {
+      console.error('Failed to load notebooks:', error)
+      if (error.code === 'permission-denied') {
+        setError('Unable to access notebooks. Please configure Firestore security rules.')
+      } else {
+        setError('Failed to load notebooks. Please try again.')
+      }
+      setNotebooks([])
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSubmitMessage();
+  const createNewNotebook = async () => {
+    if (!user || creating) return
+    
+    setCreating(true)
+    try {
+      const { createNotebook } = await import('../lib/firestore/notebook')
+      const notebookId = await createNotebook(user.uid, {
+        name: 'New Workspace',
+        description: 'Your document workspace'
+      })
+      
+      console.log('Created notebook with ID:', notebookId)
+      
+      // Wait a moment for Firebase to fully commit the write
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      
+      navigate({ to: '/notebook/$notebookId', params: { notebookId } })
+    } catch (error: any) {
+      console.error('Failed to create notebook:', error)
+      setError('Failed to create notebook. Please try again.')
+    } finally {
+      setCreating(false)
     }
+  }
+
+  const formatDate = (date: Date) => {
+    return new Intl.DateTimeFormat('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    }).format(date)
   }
 
   return (
     <ProtectedRoute>
-      <div className="flex h-screen bg-[#1a1a1a] text-white">
-        {/* Sidebar */}
-        <Sidebar />
+      <div className="min-h-screen bg-[#1a1a1a] text-white">
+        <Navigation currentPage="notebooks" />
 
         {/* Main Content */}
-        <div className="flex-1 flex flex-col">
-          {/* Header */}
-          <div className="h-14 flex items-center justify-between px-6 shadow-md">
-            <h1 className="text-lg font-semibold">Title of Chat</h1>
+        <main className="max-w-7xl mx-auto px-6 py-8">
+          {/* Welcome Section */}
+          <div className="mb-8">
+            <h2 className="text-3xl font-bold mb-2">
+              Welcome back{user?.displayName ? `, ${user.displayName}` : ``}
+            </h2>
+            <p className="text-gray-400">
+              Create and organize your study materials with AI-powered insights
+            </p>
           </div>
 
-          {/* Messages */}
-          <div className="flex-1 overflow-y-auto">
-            {messages.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center px-6 max-w-3xl mx-auto">
-                <img 
-                  src='/logo512.png' 
-                  alt="Logo" 
-                  className="w-16 h-16 mb-6 opacity-80"
-                />
-                <h2 className="text-3xl font-bold mb-4 bg-linear-to-r from-primary to-secondary bg-clip-text text-transparent">
-                  What can I help you with?
-                </h2>
-                <div className="grid grid-cols-2 gap-3 w-full mt-8">
-                  <button className="p-4 rounded-xl border border-gray-700 hover:border-gray-600 text-left hover:bg-gray-800/50 transition-all">
-                    <div className="text-sm font-medium mb-1">Generate code</div>
-                    <div className="text-xs text-gray-400">Create a React component</div>
-                  </button>
-                  <button className="p-4 rounded-xl border border-gray-700 hover:border-gray-600 text-left hover:bg-gray-800/50 transition-all">
-                    <div className="text-sm font-medium mb-1">Explain concept</div>
-                    <div className="text-xs text-gray-400">Help me understand something</div>
-                  </button>
-                  <button className="p-4 rounded-xl border border-gray-700 hover:border-gray-600 text-left hover:bg-gray-800/50 transition-all">
-                    <div className="text-sm font-medium mb-1">Write content</div>
-                    <div className="text-xs text-gray-400">Draft an email or article</div>
-                  </button>
-                  <button className="p-4 rounded-xl border border-gray-700 hover:border-gray-600 text-left hover:bg-gray-800/50 transition-all">
-                    <div className="text-sm font-medium mb-1">Analyze data</div>
-                    <div className="text-xs text-gray-400">Get insights from information</div>
-                  </button>
+          {/* Actions Bar */}
+          <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center gap-4">
+              <h3 className="text-xl font-semibold">Your Workspaces</h3>
+              <span className="text-sm text-gray-400 bg-gray-800 px-2 py-1 rounded-full">
+                {notebooks.length} {notebooks.length === 1 ? 'workspace' : 'workspaces'}
+              </span>
+            </div>
+            
+            <button
+              onClick={createNewNotebook}
+              disabled={creating}
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              {creating ? 'Creating...' : 'New Notebook'}
+            </button>
+          </div>
+
+          {/* Error Display */}
+          {error && (
+            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/50 rounded-lg">
+              <div className="flex items-start gap-3">
+                <div className="w-5 h-5 text-red-400 mt-0.5">⚠️</div>
+                <div>
+                  <h4 className="font-medium text-red-400 mb-1">Database Error</h4>
+                  <p className="text-sm text-red-300">{error}</p>
                 </div>
               </div>
-            ) : (
-              <div className="max-w-3xl mx-auto px-6 py-8">
-                {messages.map((msg, idx) => (
-                  <div key={idx} className={`mb-8 flex gap-4 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
-                      msg.role === 'user' 
-                        ? 'bg-linear-to-r from-primary to-secondary' 
-                        : 'bg-gray-700'
-                    }`}>
-                      {msg.role === 'user' ? 'U' : (
-                        <img src='/logo512.png' alt="AI" className="w-6 h-6" />
-                      )}
-                    </div>
-                    <div className={`flex-1 ${msg.role === 'user' ? 'text-right' : ''}`}>
-                      <div className={`inline-block px-4 py-3 rounded-2xl ${
-                        msg.role === 'user' 
-                          ? 'bg-linear-to-r from-primary to-secondary' 
-                          : 'bg-gray-800'
-                      }`}>
-                        {msg.content}
+            </div>
+          )}
+
+          {/* Notebooks Grid */}
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
+          ) : notebooks.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {notebooks.map((notebook) => (
+                <Link
+                  key={notebook.id}
+                  to="/notebook/$notebookId"
+                  params={{ notebookId: notebook.id }}
+                  className="group block"
+                >
+                  <div className="bg-gray-800 rounded-xl p-6 border border-gray-700 hover:border-gray-600 transition-all duration-200 hover:shadow-lg hover:transform hover:scale-[1.02]">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="p-2 bg-blue-600/10 rounded-lg">
+                        <BookOpen className="w-5 h-5 text-blue-400" />
+                      </div>
+                      <div className="flex items-center gap-1 text-xs text-gray-500">
+                        <Clock className="w-3 h-3" />
+                        {formatDate(notebook.updatedAt)}
                       </div>
                     </div>
+                    
+                    <h4 className="font-semibold mb-2 group-hover:text-blue-400 transition-colors line-clamp-2">
+                      {notebook.name}
+                    </h4>
+                    
+                    <p className="text-sm text-gray-400 line-clamp-3 mb-4">
+                      {notebook.description || 'No description'}
+                    </p>
+                    
+                    <div className="flex items-center justify-between text-xs text-gray-500">
+                      <div className="flex items-center gap-1">
+                        <FileText className="w-3 h-3" />
+                        <span>{sourceCounts[notebook.id] || 0} documents</span>
+                      </div>
+                      <span className="text-gray-600">Workspace</span>
+                    </div>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Input Area */}
-          <div className="p-4 shadow-2xl">
-            <div className="max-w-3xl mx-auto">
-              <div className="relative flex items-end gap-3 bg-gray-800 rounded-2xl p-3">
-                <button 
-                  type="button"
-                  className="p-2 text-gray-400 hover:text-white transition-colors"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-                  </svg>
-                </button>
-                <textarea
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Message AI Assistant..."
-                  className="flex-1 bg-transparent border-none outline-none resize-none text-white placeholder-gray-500 max-h-32 mb-1.5"
-                  rows={1}
-                />
-                <button
-                  onClick={handleSubmitMessage}
-                  disabled={!input.trim()}
-                  className="p-2 rounded-lg bg-linear-to-r from-primary to-secondary disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 transition-opacity"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                  </svg>
-                </button>
-              </div>
-              <div className="text-xs text-gray-500 text-center mt-3">
-                AI can make mistakes. Check important info.
-              </div>
+                </Link>
+              ))}
             </div>
-          </div>
-        </div>
+          ) : (
+            <div className="text-center py-12">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-800 rounded-full mb-4">
+                <BookOpen className="w-8 h-8 text-gray-400" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">
+                {error ? 'Database Configuration Needed' : 'No workspaces yet'}
+              </h3>
+              <p className="text-gray-400 mb-6">
+                {error 
+                  ? 'Configure Firestore security rules to start using notebooks'
+                  : 'Create your first workspace to upload and organize documents with AI'
+                }
+              </p>
+              {!error && (
+                <button
+                  onClick={createNewNotebook}
+                  disabled={creating}
+                  className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-3 rounded-lg transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  {creating ? 'Creating...' : 'Create Your First Workspace'}
+                </button>
+              )}
+            </div>
+          )}
+        </main>
       </div>
     </ProtectedRoute>
   )
 }
 
-export default App
+export default NotebooksHomepage

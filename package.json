@@ -6,7 +6,8 @@
     "dev": "vite --host --port 3003",
     "build": "vite build && tsc",
     "serve": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "generate": "vite -- tanstack-router:generate"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",
