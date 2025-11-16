@@ -8,17 +8,13 @@ import type { Notebook } from '../types/notebook'
 import { 
   ArrowLeft, 
   Plus, 
-  Search, 
   Globe, 
   Settings,
   Share,
   MessageCircle,
   Grid3X3,
   BarChart3,
-  Headphones,
-  Video,
   Brain,
-  Zap,
   StickyNote,
   HelpCircle
 } from 'lucide-react'
@@ -28,53 +24,58 @@ export const Route = createFileRoute('/notebook/$notebookId')({
 })
 
 function NotebookDetail() {
-            // Track selected sources for chatbot
-            const [selectedSourceIds, setSelectedSourceIds] = useState<string[]>([])
-          const { notebookId } = Route.useParams()
-          const [chatbotSources, setChatbotSources] = useState<any[]>([])
-          const [showUploadModal, setShowUploadModal] = useState(false)
-          useEffect(() => {
-            async function fetchNotebookSources() {
-              try {
-                const { db } = await import('../firebase')
-                const { collection, getDocs } = await import('firebase/firestore')
-                if (!db || !notebookId) return
-                const sourcesRef = collection(db, 'notebooks/' + notebookId + '/sources')
-                const querySnapshot = await getDocs(sourcesRef)
-                const sourcesList: any[] = []
-                querySnapshot.forEach((doc) => {
-                  const data = doc.data()
-                  sourcesList.push({
-                    id: doc.id,
-                    name: data.name,
-                    url: data.url,
-                    size: data.size,
-                    uploadedAt: data.uploadedAt?.toDate ? data.uploadedAt.toDate() : new Date(),
-                    type: data.type,
-                    fromRepository: !!data.fromRepository
-                  })
-                })
-                setChatbotSources(sourcesList)
-              } catch {
-                setChatbotSources([])
-              }
-            }
-            fetchNotebookSources()
-          }, [notebookId, showUploadModal])
-        // Chat state
-        const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'bot'; text: string }[]>([])
-        const [chatInput, setChatInput] = useState('')
-        const [chatLoading, setChatLoading] = useState(false)
-      const [editingName, setEditingName] = useState(false)
-      const [newName, setNewName] = useState('')
-      const [savingName, setSavingName] = useState(false)
-    // Utility to format file size
-    function formatFileSize(bytes: number) {
-      const sizes = ['Bytes', 'KB', 'MB', 'GB']
-      if (bytes === 0) return '0 Byte'
-      const i = Math.floor(Math.log(bytes) / Math.log(1024))
-      return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i]
+  // Track selected sources for chatbot
+  const [selectedSourceIds, setSelectedSourceIds] = useState<string[]>([])
+  const { notebookId } = Route.useParams()
+  const [chatbotSources, setChatbotSources] = useState<any[]>([])
+  const [showUploadModal, setShowUploadModal] = useState(false)
+
+  useEffect(() => {
+    async function fetchNotebookSources() {
+      try {
+        const { db } = await import('../firebase')
+        const { collection, getDocs } = await import('firebase/firestore')
+        if (!db || !notebookId) return
+        const sourcesRef = collection(db, 'notebooks/' + notebookId + '/sources')
+        const querySnapshot = await getDocs(sourcesRef)
+        const sourcesList: any[] = []
+        querySnapshot.forEach((doc) => {
+          const data = doc.data()
+          sourcesList.push({
+            id: doc.id,
+            name: data.name,
+            url: data.url,
+            size: data.size,
+            uploadedAt: data.uploadedAt?.toDate ? data.uploadedAt.toDate() : new Date(),
+            type: data.type,
+            fromRepository: !!data.fromRepository
+          })
+        })
+        setChatbotSources(sourcesList)
+      } catch {
+        setChatbotSources([])
+      }
     }
+    
+    fetchNotebookSources()
+  }, [notebookId, showUploadModal])
+        
+  // Chat state
+  const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'bot'; text: string }[]>([])
+  const [chatInput, setChatInput] = useState('')
+  const [chatLoading, setChatLoading] = useState(false)
+  const [editingName, setEditingName] = useState(false)
+  const [newName, setNewName] = useState('')
+  const [savingName, setSavingName] = useState(false)
+  
+  // Utility to format file size
+  function formatFileSize(bytes: number) {
+    const sizes = ['Bytes', 'KB', 'MB', 'GB']
+    if (bytes === 0) return '0 Byte'
+    const i = Math.floor(Math.log(bytes) / Math.log(1024))
+    return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i]
+  }
+  
   const navigate = useNavigate()
   const { user } = useAuth()
   const [notebook, setNotebook] = useState<Notebook | null>(null)
@@ -482,7 +483,7 @@ function NotebookDetail() {
           </div>
 
           {/* Right Sidebar - Studio */}
-          <div className="w-80 border-l border-gray-700 bg-gray-900">
+          <div className="w-80 border-l border-gray-700 bg-gray-900 flex flex-col">
             <div className="px-4 py-3 border-b border-gray-700">
               <div className="flex items-center gap-2">
                 <BarChart3 className="w-5 h-5" />
@@ -491,8 +492,7 @@ function NotebookDetail() {
               </div>
             </div>
 
-            <div className="p-4 space-y-3">
-              
+            <div className="p-4 space-y-3 flex-1 overflow-y-auto">
               
               <StudioCard 
                 icon={<Brain className="w-5 h-5" />}
@@ -519,9 +519,11 @@ function NotebookDetail() {
               />
             </div>
 
-            <div className="absolute bottom-6 right-6">
-              <button className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center hover:bg-blue-700 transition-colors shadow-lg">
-                <StickyNote className="w-5 h-5 text-white" />
+            {/* Fixed position button at bottom of sidebar */}
+            <div className="p-4 border-t border-gray-700">
+              <button className="w-full h-12 bg-blue-600 rounded-lg flex items-center justify-center hover:bg-blue-700 transition-colors shadow-lg">
+                <StickyNote className="w-5 h-5 text-white mr-2" />
+                <span className="text-white font-medium">New Note</span>
               </button>
             </div>
           </div>

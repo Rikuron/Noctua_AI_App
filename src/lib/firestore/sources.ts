@@ -5,8 +5,6 @@ import {
   addDoc,
   deleteDoc,
   Timestamp,
-  query,
-  where,
 } from 'firebase/firestore'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { db, storage } from '../../firebase'
@@ -81,26 +79,34 @@ export async function deleteSource(notebookId: string, sourceId: string): Promis
 // Function to get all sources by trying multiple approaches
 export async function getAllUserSources(userId: string): Promise<Source[]> {
   console.log('getAllUserSources called for user:', userId)
-  
+
   try {
     const allSources: Source[] = []
-    
-    // Approach 1: Try global pdfs collection first (might contain the 4 PDFs)
+    const seenUrls = new Set<string>() // Track URLs to prevent duplicates
+
+    // Approach 1: Try Global PDFs collection first
     try {
-      console.log('Trying global pdfs collection...')
+      console.log('Trying global PDFs collection...')
       const pdfsRef = collection(db, 'pdfs')
       const pdfsSnapshot = await getDocs(pdfsRef)
-      
-      console.log(`Found ${pdfsSnapshot.size} documents in global pdfs collection`)
-      pdfsSnapshot.forEach((doc) => {
+
+      console.log('Found', pdfsSnapshot.size, 'documents in global PDFs collection')
+      pdfsSnapshot.forEach(async (doc) => {
         const data = doc.data()
-        console.log('PDF document:', { id: doc.id, ...data })
-        
+        const url = data.url || data.downloadURL || data.fileURL || ''
+
+        // Skip if URL has already been seen
+        if (url && seenUrls.has(url)) return
+
+        console.log('PDF document: ', { id: doc.id, ...data })
+
+        if (url) seenUrls.add(url)
+
         allSources.push({
           id: doc.id,
-          notebookId: data.notebookId || 'shared-collection',
+          notebookId: data.notebookId || 'global-pdfs',
           name: data.name || data.fileName || data.title || doc.id,
-          url: data.url || data.downloadURL || data.fileURL || '',
+          url,
           size: data.size || data.fileSize || 0,
           uploadedAt: data.uploadedAt?.toDate() || data.createdAt?.toDate() || data.timestamp?.toDate() || new Date(),
           extractedText: data.extractedText || data.text || '',
@@ -108,61 +114,39 @@ export async function getAllUserSources(userId: string): Promise<Source[]> {
         })
       })
     } catch (error) {
-      console.log('Cannot access global pdfs collection (likely due to security rules):', error)
+      console.log('Error accessing global PDFs collection:', error)
     }
-    
+
     // Approach 2: Check user's notebooks for sources
     try {
       const { getUserNotebooks } = await import('./notebook')
       const userNotebooks = await getUserNotebooks(userId)
-      console.log('Found user notebooks:', userNotebooks.length)
-      
+      console.log('Found', userNotebooks.length, 'notebooks for user:', userId)
+
       for (const notebook of userNotebooks) {
         try {
-          console.log(`Checking sources for notebook: ${notebook.id} (${notebook.title})`)
+          console.log(`Checking sources for notebook: ${notebook.id} (${notebook.name})`)
           const sources = await getNotebookSources(notebook.id)
-          console.log(`Found ${sources.length} sources in notebook ${notebook.title}`)
-          allSources.push(...sources)
+          console.log(`Found ${sources.length} sources in notebook: ${notebook.id}`)
+
+          // Add sources, skipping duplicates
+          sources.forEach(source => {
+            if (source.url && seenUrls.has(source.url)) return
+
+            if (source.url) seenUrls.add(source.url)
+            allSources.push(source)
+          })
         } catch (error) {
-          console.log(`Error getting sources for notebook ${notebook.id}:`, error)
+          console.log(`Error checking sources for notebook ${notebook.id}:`, error)
         }
       }
     } catch (error) {
-      console.log('Error accessing notebooks:', error)
+      console.log('Error accessing user notebooks:', error)
     }
-    
-    // Approach 3: Try other possible collection names
-    const otherCollections = ['files', 'documents', 'uploads', 'materials']
-    for (const collectionName of otherCollections) {
-      try {
-        console.log(`Trying ${collectionName} collection...`)
-        const collectionRef = collection(db, collectionName)
-        const snapshot = await getDocs(collectionRef)
-        
-        if (snapshot.size > 0) {
-          console.log(`Found ${snapshot.size} documents in ${collectionName} collection`)
-          snapshot.forEach((doc) => {
-            const data = doc.data()
-            allSources.push({
-              id: doc.id,
-              notebookId: data.notebookId || `${collectionName}-collection`,
-              name: data.name || data.fileName || data.title || doc.id,
-              url: data.url || data.downloadURL || data.fileURL || '',
-              size: data.size || data.fileSize || 0,
-              uploadedAt: data.uploadedAt?.toDate() || data.createdAt?.toDate() || new Date(),
-              extractedText: data.extractedText || data.text || '',
-              type: data.type || 'pdf'
-            })
-          })
-        }
-      } catch (error) {
-        console.log(`Cannot access ${collectionName} collection:`, error)
-      }
-    }
-    
-    console.log('Total sources found:', allSources.length)
+
+    console.log('Found a total of ', allSources.length, 'sources across all approaches')
     return allSources
-    
+
   } catch (error) {
     console.error('Error in getAllUserSources:', error)
     return []
