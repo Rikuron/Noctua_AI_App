@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { useAuth } from '../components/authProvider'
 import { UploadSourcesModal } from '../components/uploadSourcesModal'
+import { SummaryModal } from '../components/summaryModal'
 import { CustomScrollbarStyles } from '../components/CustomScrollbar'
 import { getNotebook } from '../lib/firestore/notebook'
 import type { Notebook } from '../types/notebook'
@@ -29,6 +30,7 @@ function NotebookDetail() {
   const { notebookId } = Route.useParams()
   const [chatbotSources, setChatbotSources] = useState<any[]>([])
   const [showUploadModal, setShowUploadModal] = useState(false)
+  const [showSummaryModal, setShowSummaryModal] = useState(false)
 
   useEffect(() => {
     async function fetchNotebookSources() {
@@ -498,6 +500,7 @@ function NotebookDetail() {
                 icon={<Brain className="w-5 h-5" />}
                 title="Summary"
                 description=""
+                onClick={() => setShowSummaryModal(true)}
               />
               
               <StudioCard 
@@ -540,6 +543,12 @@ function NotebookDetail() {
           setShowUploadModal(false)
         }}
       />
+
+      <SummaryModal
+        isOpen={showSummaryModal}
+        onClose={() => setShowSummaryModal(false)}
+        notebookId={notebookId}
+      />
     </div>
   )
 }
@@ -548,15 +557,20 @@ function StudioCard({
   icon, 
   title, 
   description, 
-  subtitle 
+  subtitle,
+  onClick
 }: { 
   icon: React.ReactNode; 
   title: string; 
   description: string;
   subtitle?: string;
+  onClick?: () => void;
 }) {
   return (
-    <div className="bg-gray-800 rounded-lg p-3 hover:bg-gray-700 transition-colors cursor-pointer border border-gray-700">
+    <div 
+      onClick={onClick}
+      className="bg-gray-800 rounded-lg p-3 hover:bg-gray-700 transition-colors cursor-pointer border border-gray-700"
+    >
       <div className="flex items-start gap-3">
         <div className="text-gray-400 mt-0.5">
           {icon}
