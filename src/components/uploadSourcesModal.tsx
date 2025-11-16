@@ -1,16 +1,22 @@
 import React, { useState } from 'react'
-import { X, Upload } from 'lucide-react'
+import { X, Upload, CheckCircle, AlertCircle } from 'lucide-react'
 import { CustomScrollbarStyles } from './CustomScrollbar'
+import { addSource } from '../lib/firestore/sources'
+import type { SourceInput } from '../types/source'
 
 interface UploadSourcesModalProps {
   isOpen: boolean
   onClose: () => void
   onUpload: (sources: any[]) => void
+  notebookId?: string
 }
 
-export function UploadSourcesModal({ isOpen, onClose, onUpload }: UploadSourcesModalProps) {
+export function UploadSourcesModal({ isOpen, onClose, onUpload, notebookId }: UploadSourcesModalProps) {
   const [dragActive, setDragActive] = useState(false)
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
+  const [uploading, setUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState<{[key: string]: 'pending' | 'uploading' | 'success' | 'error'}>({})
+  const [error, setError] = useState<string | null>(null)
 
   if (!isOpen) return null
 
@@ -35,18 +41,66 @@ export function UploadSourcesModal({ isOpen, onClose, onUpload }: UploadSourcesM
     e.preventDefault()
     e.stopPropagation()
     setDragActive(false)
-    const files = Array.from(e.dataTransfer.files)
+    const files = Array.from(e.dataTransfer.files).filter(f => f.type === 'application/pdf')
     setSelectedFiles(files)
-    if (files.length > 0) {
-      onUpload(files)
-    }
   }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files ? Array.from(e.target.files) : []
+    const files = e.target.files ? Array.from(e.target.files).filter(f => f.type === 'application/pdf') : []
     setSelectedFiles(files)
-    if (files.length > 0) {
-      onUpload(files)
+  }
+
+  const handleUpload = async () => {
+    if (!notebookId) {
+      setError('Notebook ID is required to upload sources')
+      return
+    }
+
+    if (selectedFiles.length === 0) {
+      setError('Please select at least one file to upload')
+      return
+    }
+
+    setUploading(true)
+    setError(null)
+
+    const progress: {[key: string]: 'pending' | 'uploading' | 'success' | 'error'} = {}
+    selectedFiles.forEach(file => {
+      progress[file.name] = 'pending'
+    })
+    setUploadProgress(progress)
+
+    const uploadedSources: any[] = []
+
+    for (const file of selectedFiles) {
+      try {
+        setUploadProgress(prev => ({ ...prev, [file.name]: 'uploading' }))
+
+        const sourceInput: SourceInput = {
+          name: file.name,
+          file: file,
+          type: 'pdf'
+        }
+
+        const sourceId = await addSource(notebookId, sourceInput)
+        uploadedSources.push({ id: sourceId, name: file.name })
+        
+        setUploadProgress(prev => ({ ...prev, [file.name]: 'success' }))
+      } catch (error: any) {
+        console.error('Error uploading file: ', file.name, error)
+        setUploadProgress(prev => ({ ...prev, [file.name]: 'error' }))
+        setError(`Failed to upload ${file.name}: ${error.message || 'Unknown error'}`)
+      }
+    }
+
+    setUploading(false)
+
+    // If at least one file succeeded, call onUpload with the list of uploaded sources
+    if (uploadedSources.length > 0) {
+      setTimeout(() => {
+        onUpload(uploadedSources)
+        onClose()
+      }, 1000)
     }
   }
 
@@ -67,6 +121,7 @@ export function UploadSourcesModal({ isOpen, onClose, onUpload }: UploadSourcesM
           <button
             onClick={onClose}
             className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
+            disabled={uploading}
           >
             <X className="w-5 h-5" />
           </button>
@@ -75,14 +130,24 @@ export function UploadSourcesModal({ isOpen, onClose, onUpload }: UploadSourcesM
         <div className="p-6">
           <div className="mb-4">
             <h3 className="text-lg font-medium mb-2">Add sources</h3>
-            <button className="text-blue-400 text-sm hover:text-blue-300 transition-colors">
-              🔍 Discover sources
-            </button>
+            {!notebookId && (
+              <div className="mb-4 p-3 bg-yellow-500/10 border border-yellow-500/50 rounded-lg">
+                <p className="text-sm text-yellow-400"> ⚠️ No notebook selected. Please close and try again </p>
+              </div>
+            )}
           </div>
           
           <p className="text-sm text-gray-400 mb-6">
-            Sources let Noctua Ai base its responses on the information that matters most to you.<br/>
+            Upload PDF documents to use as reference sources in this notebook.<br/>
+            The AI will extract text and use it to answer your questions.
           </p>
+
+          {error && (
+            <div className="mb-4 p-3 bg-red-500/10 border border-red-500/50 rounded-lg flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-red-400" />
+              <span className="text-red-400 text-sm">{error}</span>
+            </div>
+          )}
 
           {/* Upload Area */}
           <div
@@ -114,82 +179,53 @@ export function UploadSourcesModal({ isOpen, onClose, onUpload }: UploadSourcesM
               </label>{' '}to upload
             </p>
             <p className="text-xs text-gray-500">
-              Supported file types: PDF, .txt, Markdown, Audio (e.g. mp3), .docx, .avif, .bmp, .gif, .ico, .jp2, .png, .webp, .tif, .tiff, .heic, .heif, .jpeg, .jpg, .jpe
+              Supported file types: PDF only (for now)
             </p>
+
+            {/* Selected Files List */}
             {selectedFiles.length > 0 && (
-              <div className="mt-4 text-left">
-                <h4 className="text-sm font-semibold mb-2">Selected files:</h4>
-                <ul className="list-disc ml-6 text-xs text-gray-300">
+              <div className="mb-6">
+                <h4 className="text-sm font-semibold mb-3">Selected files ({selectedFiles.length}):</h4>
+                <div className="space-y-2 max-h-40 overflow-y-auto">
                   {selectedFiles.map((file, idx) => (
-                    <li key={idx}>{file.name}</li>
+                    <div key={idx} className="flex items-center justify-between bg-gray-700 p-3 rounded-lg">
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <div className="text-blue-400">📄</div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm truncate">{file.name}</p>
+                          <p className="text-xs text-gray-400">
+                            {(file.size / 1024 / 1024).toFixed(2)} MB
+                          </p>
+                        </div>
+                      </div>
+                      {uploadProgress[file.name] === 'uploading' && (
+                        <div className="text-blue-400 text-xs">Uploading...</div>
+                      )}
+                      {uploadProgress[file.name] === 'success' && (
+                        <CheckCircle className="w-5 h-5 text-green-400" />
+                      )}
+                      {uploadProgress[file.name] === 'error' && (
+                        <AlertCircle className="w-5 h-5 text-red-400" />
+                      )}
+                    </div>
                   ))}
-                </ul>
+                </div>
               </div>
             )}
-          </div>
 
-          {/* Source Options */}
-          <div className="grid grid-cols-3 gap-3">
-            <SourceOption
-              icon="🌐"
-              title="Google Workspace"
-              onClick={() => console.log('Google Workspace clicked')}
-            />
-            <SourceOption
-              icon="🔗"
-              title="Link"
-              onClick={() => console.log('Link clicked')}
-            />
-            <SourceOption
-              icon="📝"
-              title="Paste text"
-              onClick={() => console.log('Paste text clicked')}
-            />
-            <SourceOption
-              icon="💾"
-              title="Google Drive"
-              onClick={() => console.log('Google Drive clicked')}
-            />
-            <SourceOption
-              icon="🌐"
-              title="Website"
-              onClick={() => console.log('Website clicked')}
-            />
-            <SourceOption
-              icon="🎥"
-              title="YouTube"
-              onClick={() => console.log('YouTube clicked')}
-            />
-            <SourceOption
-              icon="📋"
-              title="Copied text"
-              onClick={() => console.log('Copied text clicked')}
-            />
+            {/* Upload Button */}
+            {selectedFiles.length > 0 && (
+              <button
+                onClick={handleUpload}
+                disabled={uploading || !notebookId}
+                className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors"
+              >
+                {uploading ? 'Uploading...' : `Upload ${selectedFiles.length} file(s)`}
+              </button>
+            )}
           </div>
         </div>
       </div>
     </div>
-  )
-}
-
-function SourceOption({ 
-  icon, 
-  title, 
-  onClick 
-}: { 
-  icon: string;
-  title: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className="flex flex-col items-center gap-2 p-4 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors text-center border border-gray-600 hover:border-gray-500"
-    >
-      <div className="text-xl">
-        {icon}
-      </div>
-      <span className="text-sm">{title}</span>
-    </button>
   )
 }

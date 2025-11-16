@@ -426,9 +426,9 @@ function NotebookDetail() {
               </div>
             </div>
             
-            <div className="flex-1 flex items-center justify-center p-8">
-              <div className="flex flex-col w-full h-full">
-                <div className="mb-4 bg-gray-800 rounded-lg p-4" style={{ height: '500px', overflowY: 'auto' }}>
+            <div className="flex-1 flex flex-col p-4 overflow-hidden">
+              <div className="flex flex-col flex-1 max-w-5xl w-full mx-auto">
+                <div className="flex-1 bg-gray-800 rounded-lg p-4 mb-4 overflow-y-auto">
                   {chatMessages.length === 0 ? (
                     <div className="text-center text-gray-400">Start chatting with your notebook sources!</div>
                   ) : (
@@ -534,6 +534,7 @@ function NotebookDetail() {
       <UploadSourcesModal
         isOpen={showUploadModal}
         onClose={() => setShowUploadModal(false)}
+        notebookId={notebookId}
         onUpload={(sources) => {
           console.log('Sources uploaded:', sources)
           setShowUploadModal(false)

@@ -1,13 +1,13 @@
 import * as pdfjsLib from 'pdfjs-dist'
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`
+pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs'
 
 // Function to Extract Text from PDF
 export async function extractTextFromPDF(file: File): Promise<string> {
   try {
     const arrayBuffer = await file.arrayBuffer()
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
-
+    
     let fullText = ''
 
     // Extract text from each page
@@ -24,6 +24,10 @@ export async function extractTextFromPDF(file: File): Promise<string> {
     return fullText.trim()
   } catch (error) {
     console.error('Error extracting text from PDF:', error)
+    if (error instanceof Error) {
+      console.error('Error message:', error.message)
+      console.error('Error stack:', error.stack)
+    }
     throw new Error('Failed to extract text from PDF. Please try again.')
   }
 }

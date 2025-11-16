@@ -4,4 +4,5 @@ export interface Summary {
   content: string
   generatedAt: Date
   sourceIds: string[]
+  sourceNames?: string[]
 }
