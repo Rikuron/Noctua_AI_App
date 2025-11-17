@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '../components/authProvider'
 import { UploadSourcesModal } from '../components/uploadSourcesModal'
 import { SummaryModal } from '../components/summaryModal'
+import ReactMarkdown from 'react-markdown'
 import { CustomScrollbarStyles } from '../components/CustomScrollbar'
 import { getNotebook } from '../lib/firestore/notebook'
 import type { Notebook } from '../types/notebook'
@@ -365,11 +366,32 @@ function NotebookDetail() {
                           <a href={pdf.url} target="_blank" rel="noopener noreferrer" className="px-2 py-1 bg-gray-700 text-white rounded hover:bg-gray-600 text-xs">View</a>
                           <button
                             className="px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs"
-                            onClick={async () => {
+                            onClick={async (e) => {
                               // Add PDF as source to notebook (reference only)
                               try {
                                 const { db } = await import('../firebase')
                                 const { collection: fsCollection, addDoc, getDocs } = await import('firebase/firestore')
+
+                                // Show loading indicator
+                                const button = e.currentTarget as HTMLButtonElement
+                                const originalText = button.textContent
+                                if (button) button.textContent
+
+                                // Fetch the PDF and extract text
+                                let extractedText = ''
+                                try {
+                                  console.log('Fetching PDF from:', pdf.url)
+                                  const response = await fetch(pdf.url)
+                                  const blob = await response.blob()
+                                  const file = new File([blob], pdf.name, { type: 'application/pdf' })
+                                  const { extractTextFromPDF } = await import('../lib/pdfExtractor')
+                                  extractedText = await extractTextFromPDF(file)
+                                  console.log('Extracted text length:', extractedText.length)
+                                } catch (extractError) {
+                                  console.error('Failed to extract text:', extractError)
+                                  extractedText = 'Failed to extract text from PDF.'
+                                }
+
                                 const sourcesRef = fsCollection(db, 'notebooks/' + notebookId + '/sources')
                                 await addDoc(sourcesRef, {
                                   name: pdf.name,
@@ -377,11 +399,13 @@ function NotebookDetail() {
                                   size: pdf.size,
                                   uploadedAt: pdf.uploadedAt,
                                   type: 'pdf',
-                                  extractedText: '',
+                                  extractedText: extractedText,
                                   fromRepository: true
                                 })
+
                                 alert('PDF added to Chatbot Sources!')
-                                // Optionally refresh chatbotSources
+                                
+                                // Refresh chatbotSources
                                 const querySnapshot = await getDocs(sourcesRef)
                                 const sourcesList: any[] = []
                                 querySnapshot.forEach((doc) => {
@@ -397,6 +421,9 @@ function NotebookDetail() {
                                   })
                                 })
                                 setChatbotSources(sourcesList)
+
+                                // Reset button text
+                                if (button && originalText) button.textContent = originalText
                               } catch (err: any) {
                                 alert('Failed to add PDF: ' + (err?.message || String(err)))
                               }
@@ -428,41 +455,89 @@ function NotebookDetail() {
               </div>
             </div>
             
-            <div className="flex-1 flex flex-col p-4 overflow-hidden">
-              <div className="flex flex-col flex-1 max-w-5xl w-full mx-auto">
-                <div className="flex-1 bg-gray-800 rounded-lg p-4 mb-4 overflow-y-auto">
+            <div className="flex-1 flex flex-col overflow-hidden">
+              <div className="flex-1 flex flex-col max-w-5xl w-full mx-auto p-4 overflow-hidden">
+                {/* Scrollable messages container */}
+                <div className="flex-1 bg-gray-800 rounded-lg p-4 mb-4 overflow-y-auto custom-scrollbar">
                   {chatMessages.length === 0 ? (
-                    <div className="text-center text-gray-400">Start chatting with your notebook sources!</div>
+                    <div className="text-center text-gray-400 py-8">Start chatting with your notebook sources!</div>
                   ) : (
-                    <ul className="space-y-3">
+                    <div className="space-y-4">
                       {chatMessages.map((msg, idx) => (
-                        <li key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                          <div className={`px-4 py-2 rounded-lg max-w-[80%] wrap-break-word ${msg.role === 'user' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-100'}`}>{msg.text}</div>
-                        </li>
+                        <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                          {msg.role === 'user' ? (
+                            <div className="px-4 py-2 rounded-lg max-w-[80%] bg-blue-600 text-white">
+                              <div className="whitespace-pre-wrap wrap-break-word">{msg.text}</div>
+                            </div>
+                          ) : (
+                            <div className="px-4 py-3 rounded-lg max-w-[85%] bg-gray-700">
+                              <ReactMarkdown
+                                components={{
+                                  h1: ({node, ...props}) => <h1 className="text-xl font-bold text-white mb-3" {...props} />,
+                                  h2: ({node, ...props}) => <h2 className="text-lg font-bold text-white mb-2" {...props} />,
+                                  h3: ({node, ...props}) => <h3 className="text-base font-semibold text-white mb-2" {...props} />,
+                                  p: ({node, ...props}) => <p className="text-gray-100 mb-2 leading-relaxed" {...props} />,
+                                  ul: ({node, ...props}) => <ul className="list-disc list-inside text-gray-100 mb-2 space-y-1 ml-2" {...props} />,
+                                  ol: ({node, ...props}) => <ol className="list-decimal list-inside text-gray-100 mb-2 space-y-1 ml-2" {...props} />,
+                                  li: ({node, ...props}) => <li className="text-gray-100" {...props} />,
+                                  strong: ({node, ...props}) => <strong className="font-bold text-white" {...props} />,
+                                  em: ({node, ...props}) => <em className="italic text-gray-200" {...props} />,
+                                  code: ({node, ...props}) => <code className="bg-gray-800 px-2 py-1 rounded text-blue-300 text-sm" {...props} />,
+                                  blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-blue-500 pl-3 italic text-gray-200 my-2" {...props} />,
+                                  pre: ({node, ...props}) => <pre className="bg-gray-800 p-3 rounded my-2 overflow-x-auto" {...props} />,
+                                }}
+                              >
+                                {msg.text}
+                              </ReactMarkdown>
+                            </div>
+                          )}
+                        </div>
                       ))}
-                    </ul>
+                    </div>
                   )}
                 </div>
+
+                {/* Fixed input form at bottom */}
                 <form
-                  className="flex gap-2"
+                  className="flex gap-2 shrink-0"
                   onSubmit={async (e) => {
                     e.preventDefault()
                     if (!chatInput.trim()) return
-                    setChatMessages(msgs => [...msgs, { role: 'user', text: chatInput }])
+
+                    const userMessage = chatInput
+                    setChatMessages(msgs => [...msgs, { role: 'user', text: userMessage }])
+                    setChatInput('')
                     setChatLoading(true)
+
                     try {
-                      // Call Gemini API or mock response
+                      // Fetch all notebook sources and their extracted text
+                      const { getNotebookSources } = await import('../lib/firestore/sources')
+                      const sources = await getNotebookSources(notebookId)
+
+                      // Get extracted text from all sources
+                      const sourceTexts = sources
+                        .map(s => s.extractedText)
+                        .filter(text => text && text !== 'Failed to extract text from PDF. Please try again.')
+
+                      // Call Gemini API with source content
                       let botReply = ''
                       try {
                         const { chatWithSources } = await import('../lib/gemini')
-                        botReply = await chatWithSources(chatInput, [], [])
-                      } catch {
-                        botReply = "(Gemini API not configured) This is a mock response to: " + chatInput
+                        botReply = await chatWithSources(userMessage, sourceTexts, [])
+                      } catch (err: any) {
+                        console.error('Gemini API error:', err)
+                        botReply = 'Failed to answer your question. Please try again.'
                       }
+
                       setChatMessages(msgs => [...msgs, { role: 'bot', text: botReply }])
+                    } catch (err: any) {
+                      console.error('Error in chat:', err)
+                      setChatMessages(msgs => [...msgs, { 
+                        role: 'bot', 
+                        text: 'Sorry, I encountered an error. Please try again.' 
+                      }])
                     } finally {
                       setChatLoading(false)
-                      setChatInput('')
                     }
                   }}
                 >
@@ -476,9 +551,11 @@ function NotebookDetail() {
                   />
                   <button
                     type="submit"
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed"
                     disabled={chatLoading || !chatInput.trim()}
-                  >Send</button>
+                  >
+                    {chatLoading ? 'Sending...' : 'Send'}
+                  </button>
                 </form>
               </div>
             </div>
