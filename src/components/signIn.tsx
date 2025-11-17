@@ -43,18 +43,18 @@ export function SignIn() {
   }
 
   return (
-    <div className="flex h-screen bg-[#1a1a1a] text-white">
-      <div className="flex-1 flex items-center justify-center px-8">
-        <div className="flex items-center gap-8 max-w-5xl w-full">
-          {/* Left side - Logo and branding */}
-          <div className="flex-1 flex flex-col items-center text-center pr-4">
+    <div className="flex min-h-screen bg-[#1a1a1a] text-white">
+      <div className="flex-1 flex items-center justify-center px-4 py-8 sm:px-6 lg:px-8">
+        <div className="flex flex-col lg:flex-row items-center gap-8 max-w-5xl w-full">
+          {/* Left side - Logo and branding (hidden on mobile, shown on desktop) */}
+          <div className="hidden lg:flex flex-1 flex-col items-center text-center pr-4">
             <div className="mb-8">
               <img 
                 src='/logo512.png' 
                 alt="Logo" 
                 className="w-32 h-32 mx-auto mb-6 opacity-90"
               />
-              <h1 className="text-4xl font-bold mb-4 bg-linear-to-r from-primary to-secondary bg-clip-text text-transparent">
+              <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
                 Welcome to Noctua AI
               </h1>
               <p className="text-gray-400 text-lg">
@@ -79,11 +79,26 @@ export function SignIn() {
             </div>
           </div>
 
+          {/* Mobile-only header */}
+          <div className="lg:hidden text-center mb-6">
+            <img 
+              src='/logo512.png' 
+              alt="Logo" 
+              className="w-20 h-20 mx-auto mb-4 opacity-90"
+            />
+            <h1 className="text-2xl font-bold mb-2 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+              Noctua AI
+            </h1>
+            <p className="text-gray-400 text-sm">
+              Your intelligent AI assistant
+            </p>
+          </div>
+
           {/* Right side - Sign in form */}
-          <div className="flex-1 flex justify-center">
-            <div className="bg-gray-800 rounded-2xl p-8 border border-gray-700 shadow-2xl w-full max-w-md">
+          <div className="flex-1 flex justify-center w-full max-w-md">
+            <div className="bg-gray-800 rounded-2xl p-6 sm:p-8 border border-gray-700 shadow-2xl w-full">
               <div className="text-center mb-6">
-                <h2 className="text-2xl font-semibold mb-2">
+                <h2 className="text-xl sm:text-2xl font-semibold mb-2">
                   {isSignUp ? 'Create Account' : 'Sign In'}
                 </h2>
                 <p className="text-gray-400 text-sm">
@@ -107,7 +122,7 @@ export function SignIn() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="your.name@g.msuiit.edu.ph"
-                    className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors"
+                    className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors text-base"
                     required
                   />
                 </div>
@@ -121,7 +136,7 @@ export function SignIn() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors"
+                    className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors text-base"
                     required
                   />
                 </div>
@@ -129,7 +144,7 @@ export function SignIn() {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full py-3 cursor-pointer bg-linear-to-r from-primary to-secondary rounded-lg font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full py-3 cursor-pointer bg-gradient-to-r from-primary to-secondary rounded-lg font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed text-base"
                 >
                   {isSubmitting ? 'Loading...' : isSignUp ? 'Create Account' : 'Sign In'}
                 </button>
@@ -147,7 +162,7 @@ export function SignIn() {
               <button
                 onClick={handleGoogleSignIn}
                 disabled={isSubmitting}
-                className="w-full py-3 bg-gray-700 cursor-pointer hover:bg-gray-600 border border-gray-600 rounded-lg font-medium transition-colors flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full py-3 bg-gray-700 cursor-pointer hover:bg-gray-600 border border-gray-600 rounded-lg font-medium transition-colors flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed text-base"
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24">
                   <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>

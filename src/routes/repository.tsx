@@ -16,7 +16,9 @@ import {
   Calendar,
   HardDrive,
   AlertCircle,
-  Eye
+  Eye,
+  X,
+  MoreVertical
 } from 'lucide-react'
 import { getAllUserSources, deleteSource } from '../lib/firestore/sources'
 import type { Source } from '../types/source'
@@ -36,6 +38,7 @@ function MaterialRepository() {
   const [error, setError] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<string | null>(null)
   const [showUploadModal, setShowUploadModal] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState<string | null>(null)
 
   useEffect(() => {
     if (user) {
@@ -94,6 +97,7 @@ function MaterialRepository() {
     try {
       await deleteSource(source.notebookId, source.id)
       await loadSources() // Reload sources after deletion
+      setMobileMenuOpen(null)
     } catch (error) {
       console.error('Error deleting source:', error)
       alert('Failed to delete document')
@@ -107,19 +111,17 @@ function MaterialRepository() {
     link.href = source.url
     link.download = source.name
     document.body.appendChild(link)
-    // Try to force download
     link.click()
     document.body.removeChild(link)
-    // Fallback: if browser opens in new tab, let user know
+    
     setTimeout(() => {
-      // If the file is not downloaded, open in new tab
-      // (No reliable way to detect, but this helps for remote files)
       window.open(source.url, '_blank')
     }, 500)
   }
 
   const handleViewPdf = (source: Source) => {
     setViewingPdf(source)
+    setMobileMenuOpen(null)
   }
 
   const formatFileSize = (bytes: number) => {
@@ -139,6 +141,21 @@ function MaterialRepository() {
     }).format(date)
   }
 
+  const formatDateMobile = (date: Date) => {
+    const now = new Date()
+    const diffTime = Math.abs(now.getTime() - date.getTime())
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    
+    if (diffDays === 1) return 'Yesterday'
+    if (diffDays < 7) return `${diffDays}d ago`
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`
+    
+    return new Intl.DateTimeFormat('en-US', {
+      month: 'short',
+      day: 'numeric'
+    }).format(date)
+  }
+
   const filteredSources = sources.filter(source =>
     source.name.toLowerCase().includes(searchQuery.toLowerCase())
   )
@@ -148,75 +165,77 @@ function MaterialRepository() {
       <div className="min-h-screen bg-[#1a1a1a] text-white flex flex-col">
         <Navigation currentPage="repository" />
 
-        <main className="flex-1 flex flex-col max-w-7xl mx-auto w-full px-6 py-8">
+        <main className="flex-1 flex flex-col max-w-7xl mx-auto w-full px-3 sm:px-6 py-4 sm:py-8">
           {/* Header Section */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold mb-2">Material Repository</h1>
-            <p className="text-gray-400">Access and manage your uploaded documents and study materials</p>
+          <div className="mb-4 sm:mb-8">
+            <h1 className="text-xl sm:text-3xl font-bold mb-1 sm:mb-2">Material Repository</h1>
+            <p className="text-gray-400 text-xs sm:text-base">
+              Access and manage your uploaded documents
+            </p>
           </div>
 
           {/* Actions Bar */}
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-4">
-              <div className="relative">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 sm:mb-6">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <div className="relative flex-1 sm:flex-none">
+                <Search className="w-3 h-3 sm:w-4 sm:h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                 <input
                   type="text"
                   placeholder="Search documents..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 pr-4 py-2 bg-gray-800 border border-gray-600 rounded-lg focus:outline-none focus:border-blue-500 text-white w-80"
+                  className="pl-8 pr-3 py-2 bg-gray-800 border border-gray-600 rounded-lg focus:outline-none focus:border-blue-500 text-white text-sm w-full sm:w-64"
                 />
               </div>
-              <button className="flex items-center gap-2 px-4 py-2 bg-gray-800 border border-gray-600 rounded-lg hover:bg-gray-700 transition-colors">
-                <Filter className="w-4 h-4" />
-                Filter
+              <button className="flex items-center gap-1 px-2 py-2 bg-gray-800 border border-gray-600 rounded-lg hover:bg-gray-700 transition-colors sm:flex hidden">
+                <Filter className="w-3 h-3" />
+                <span className="hidden sm:inline text-sm">Filter</span>
               </button>
             </div>
             
             <button
               onClick={() => setShowUploadModal(true)}
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+              className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 sm:py-2 rounded-lg transition-colors text-sm w-full sm:w-auto"
             >
-              <Plus className="w-4 h-4" />
-              Add Document
+              <Plus className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span>Add Document</span>
             </button>
           </div>
 
-          {/* Statistics */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div className="bg-gray-800 p-6 rounded-lg border border-gray-700">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
-                  <FileText className="w-5 h-5" />
+          {/* Statistics - Compact for Mobile */}
+          <div className="grid grid-cols-3 gap-2 sm:gap-6 mb-4 sm:mb-8">
+            <div className="bg-gray-800 p-3 sm:p-6 rounded-lg border border-gray-700">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="w-6 h-6 sm:w-10 sm:h-10 bg-blue-600 rounded-lg flex items-center justify-center">
+                  <FileText className="w-3 h-3 sm:w-5 sm:h-5" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold">{sources.length}</h3>
-                  <p className="text-gray-400 text-sm">Total Documents</p>
+                  <h3 className="text-sm sm:text-lg font-semibold">{sources.length}</h3>
+                  <p className="text-gray-400 text-xs sm:text-sm">Documents</p>
                 </div>
               </div>
             </div>
-            <div className="bg-gray-800 p-6 rounded-lg border border-gray-700">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-green-600 rounded-lg flex items-center justify-center">
-                  <HardDrive className="w-5 h-5" />
+            <div className="bg-gray-800 p-3 sm:p-6 rounded-lg border border-gray-700">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="w-6 h-6 sm:w-10 sm:h-10 bg-green-600 rounded-lg flex items-center justify-center">
+                  <HardDrive className="w-3 h-3 sm:w-5 sm:h-5" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold">
+                  <h3 className="text-sm sm:text-lg font-semibold">
                     {formatFileSize(sources.reduce((total, source) => total + source.size, 0))}
                   </h3>
-                  <p className="text-gray-400 text-sm">Total Storage Used</p>
+                  <p className="text-gray-400 text-xs sm:text-sm">Storage</p>
                 </div>
               </div>
             </div>
-            <div className="bg-gray-800 p-6 rounded-lg border border-gray-700">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-purple-600 rounded-lg flex items-center justify-center">
-                  <FileText className="w-5 h-5" />
+            <div className="bg-gray-800 p-3 sm:p-6 rounded-lg border border-gray-700">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="w-6 h-6 sm:w-10 sm:h-10 bg-purple-600 rounded-lg flex items-center justify-center">
+                  <FileText className="w-3 h-3 sm:w-5 sm:h-5" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold">{sources.filter(s => s.type === 'pdf').length}</h3>
-                  <p className="text-gray-400 text-sm">PDF Documents</p>
+                  <h3 className="text-sm sm:text-lg font-semibold">{sources.filter(s => s.type === 'pdf').length}</h3>
+                  <p className="text-gray-400 text-xs sm:text-sm">PDFs</p>
                 </div>
               </div>
             </div>
@@ -224,37 +243,38 @@ function MaterialRepository() {
 
           {/* Error Display */}
           {error && (
-            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/50 rounded-lg flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-red-400" />
-              <span className="text-red-400">{error}</span>
+            <div className="mb-4 p-3 bg-red-500/10 border border-red-500/50 rounded-lg flex items-center gap-2">
+              <AlertCircle className="w-3 h-3 text-red-400 flex-shrink-0" />
+              <span className="text-red-400 text-xs">{error}</span>
             </div>
           )}
 
           {/* Documents List */}
           {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="text-gray-400">Loading documents...</div>
+            <div className="flex items-center justify-center py-8">
+              <div className="text-gray-400 text-sm">Loading documents...</div>
             </div>
           ) : filteredSources.length > 0 ? (
             <div className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-700 bg-gray-900">
-                <h2 className="text-lg font-semibold">Documents ({filteredSources.length})</h2>
+              <div className="px-3 sm:px-6 py-3 border-b border-gray-700 bg-gray-900">
+                <h2 className="text-base sm:text-lg font-semibold">Documents ({filteredSources.length})</h2>
               </div>
               <div className="divide-y divide-gray-700">
                 {filteredSources.map((source) => (
                   <div
                     key={source.id}
-                    className="px-6 py-4 hover:bg-gray-750 transition-colors cursor-pointer"
+                    className="px-3 sm:px-6 py-3 hover:bg-gray-750 transition-colors cursor-pointer group"
                     onClick={() => setSelectedSource(source)}
                   >
-                    <div className="flex items-center justify-between">
+                    {/* Desktop Layout */}
+                    <div className="hidden sm:flex items-center justify-between">
                       <div className="flex items-center gap-4 flex-1">
-                        <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
-                          <FileText className="w-5 h-5" />
+                        <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <FileText className="w-4 h-4" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-medium text-white truncate">{source.name}</h3>
-                          <div className="flex items-center gap-4 text-sm text-gray-400 mt-1">
+                          <h3 className="font-medium text-white truncate text-sm">{source.name}</h3>
+                          <div className="flex items-center gap-4 text-xs text-gray-400 mt-1">
                             <div className="flex items-center gap-1">
                               <Calendar className="w-3 h-3" />
                               <span>Uploaded {formatDate(source.uploadedAt)}</span>
@@ -263,32 +283,32 @@ function MaterialRepository() {
                               <HardDrive className="w-3 h-3" />
                               <span>{formatFileSize(source.size)}</span>
                             </div>
-                            <span className="px-2 py-1 bg-blue-600/20 text-blue-400 rounded-md text-xs uppercase">
+                            <span className="px-2 py-1 bg-blue-600/20 text-blue-400 rounded text-xs uppercase">
                               {source.type}
                             </span>
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1">
                         <button
                           onClick={(e) => {
                             e.stopPropagation()
                             handleViewPdf(source)
                           }}
-                          className="p-2 text-blue-400 hover:text-blue-300 hover:bg-gray-700 rounded-lg transition-colors"
+                          className="p-1.5 text-blue-400 hover:text-blue-300 hover:bg-gray-700 rounded transition-colors"
                           title="View PDF"
                         >
-                          <Eye className="w-4 h-4" />
+                          <Eye className="w-3 h-3" />
                         </button>
                         <button
                           onClick={(e) => {
                             e.stopPropagation()
                             handleDownload(source)
                           }}
-                          className="p-2 text-gray-400 hover:text-blue-400 hover:bg-gray-700 rounded-lg transition-colors"
+                          className="p-1.5 text-gray-400 hover:text-blue-400 hover:bg-gray-700 rounded transition-colors"
                           title="Download"
                         >
-                          <Download className="w-4 h-4" />
+                          <Download className="w-3 h-3" />
                         </button>
                         {source.notebookId && source.notebookId !== 'hook-collection' && source.notebookId !== 'global-pdfs' ? (
                           <button
@@ -297,20 +317,97 @@ function MaterialRepository() {
                               handleDeleteSource(source)
                             }}
                             disabled={deleting === source.id}
-                            className="p-2 text-gray-400 hover:text-red-400 hover:bg-gray-700 rounded-lg transition-colors disabled:opacity-50"
+                            className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-gray-700 rounded transition-colors disabled:opacity-50"
                             title="Delete"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-3 h-3" />
                           </button>
                         ) : (
                           <button
-                            className="p-2 text-gray-700 bg-gray-900 rounded-lg cursor-not-allowed opacity-50"
+                            className="p-1.5 text-gray-700 bg-gray-900 rounded cursor-not-allowed opacity-50"
                             title="Cannot delete global or fallback document"
                             disabled
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-3 h-3" />
                           </button>
                         )}
+                      </div>
+                    </div>
+
+                    {/* Mobile Layout - Ultra Compact */}
+                    <div className="sm:hidden">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 bg-blue-600 rounded flex items-center justify-center flex-shrink-0">
+                          <FileText className="w-3 h-3" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-medium text-white text-xs truncate mb-1">{source.name}</h3>
+                          <div className="flex items-center gap-2 text-xs text-gray-400">
+                            <span>{formatDateMobile(source.uploadedAt)}</span>
+                            <span>•</span>
+                            <span>{formatFileSize(source.size)}</span>
+                            <span>•</span>
+                            <span className="text-blue-400 uppercase">{source.type}</span>
+                          </div>
+                        </div>
+                        <div className="relative">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setMobileMenuOpen(mobileMenuOpen === source.id ? null : source.id)
+                            }}
+                            className="p-1 text-gray-400 hover:text-white transition-colors"
+                          >
+                            <MoreVertical className="w-3 h-3" />
+                          </button>
+                          
+                          {/* Mobile Action Menu */}
+                          {mobileMenuOpen === source.id && (
+                            <div className="absolute right-0 top-6 bg-gray-700 border border-gray-600 rounded-lg shadow-lg z-10 min-w-28">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleViewPdf(source)
+                                }}
+                                className="flex items-center gap-2 w-full px-2 py-1.5 text-xs text-white hover:bg-gray-600 transition-colors first:rounded-t-lg"
+                              >
+                                <Eye className="w-3 h-3" />
+                                View
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleDownload(source)
+                                }}
+                                className="flex items-center gap-2 w-full px-2 py-1.5 text-xs text-white hover:bg-gray-600 transition-colors"
+                              >
+                                <Download className="w-3 h-3" />
+                                Download
+                              </button>
+                              {source.notebookId && source.notebookId !== 'hook-collection' && source.notebookId !== 'global-pdfs' ? (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleDeleteSource(source)
+                                  }}
+                                  disabled={deleting === source.id}
+                                  className="flex items-center gap-2 w-full px-2 py-1.5 text-xs text-red-400 hover:bg-gray-600 transition-colors last:rounded-b-lg disabled:opacity-50"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                  Delete
+                                </button>
+                              ) : (
+                                <button
+                                  className="flex items-center gap-2 w-full px-2 py-1.5 text-xs text-gray-500 cursor-not-allowed last:rounded-b-lg"
+                                  disabled
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                  Delete
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -318,43 +415,31 @@ function MaterialRepository() {
               </div>
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center py-16">
-              <FileText className="w-16 h-16 text-gray-400 mb-4" />
-              <h3 className="text-lg font-medium text-gray-300 mb-2">
+            <div className="flex flex-col items-center justify-center py-8 sm:py-16 px-4">
+              <FileText className="w-8 h-8 sm:w-16 sm:h-16 text-gray-400 mb-3" />
+              <h3 className="text-base font-medium text-gray-300 mb-2 text-center">
                 {searchQuery ? 'No matching documents' : 'No documents yet'}
               </h3>
-              <p className="text-gray-400 mb-6 text-center max-w-md">
+              <p className="text-gray-400 mb-4 text-center max-w-md text-xs sm:text-base">
                 {searchQuery 
-                  ? 'Try adjusting your search terms or filters'
-                  : 'Upload documents to your notebooks to see them here. Documents from all your notebooks will appear in this repository.'
+                  ? 'Try adjusting your search terms'
+                  : 'Upload documents to your notebooks to see them here.'
                 }
               </p>
               {!searchQuery && (
                 <div className="text-center">
-                  <p className="text-sm text-gray-500 mb-4">
-                    💡 Tip: Create a notebook and upload PDFs to get started
-                  </p>
                   <button
                     onClick={() => setShowUploadModal(true)}
-                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-colors"
+                    className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors text-sm w-full sm:w-auto"
                   >
-                    <Upload className="w-4 h-4" />
-                    Upload Your First Document
+                    <Upload className="w-3 h-3" />
+                    Upload First Document
                   </button>
                 </div>
               )}
             </div>
           )}
         </main>
-
-        {/* PDF Viewer Modal */}
-        {viewingPdf && (
-          <PDFViewer
-            pdfUrl={viewingPdf.url}
-            pdfName={viewingPdf.name}
-            onClose={() => setViewingPdf(null)}
-          />
-        )}
 
         {/* PDF Viewer Modal */}
         {viewingPdf && (
@@ -377,28 +462,34 @@ function MaterialRepository() {
           />
         )}
 
-        {/* Document Details Modal */}
+        {/* Document Details Modal - Compact for Mobile */}
         {selectedSource && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-gray-800 rounded-lg border border-gray-700 max-w-2xl w-full max-h-[80vh] overflow-hidden">
-              <div className="flex items-center justify-between p-6 border-b border-gray-700">
-                <h2 className="text-xl font-semibold">Document Details</h2>
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center p-0 sm:p-4 z-50"
+            onClick={() => setSelectedSource(null)}
+          >
+            <div 
+              className="bg-gray-800 rounded-t-2xl sm:rounded-lg border border-gray-700 w-full sm:max-w-2xl sm:max-h-[80vh] overflow-hidden h-[80vh] sm:h-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between p-3 sm:p-6 border-b border-gray-700 sticky top-0 bg-gray-800">
+                <h2 className="text-lg sm:text-xl font-semibold">Document Details</h2>
                 <button
                   onClick={() => setSelectedSource(null)}
-                  className="text-gray-400 hover:text-white"
+                  className="text-gray-400 hover:text-white p-1"
                 >
-                  ×
+                  <X className="w-5 h-5 sm:w-6 sm:h-6" />
                 </button>
               </div>
-              <div className="p-6 space-y-4 overflow-y-auto">
-                <div className="flex items-center gap-4">
-                  <div className="w-16 h-16 bg-blue-600 rounded-lg flex items-center justify-center">
-                    <FileText className="w-8 h-8" />
+              <div className="p-3 sm:p-6 space-y-3 sm:space-y-4 overflow-y-auto h-full pb-16 sm:pb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 sm:w-12 sm:h-12 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <FileText className="w-4 h-4 sm:w-6 sm:h-6" />
                   </div>
-                  <div>
-                    <h3 className="text-lg font-medium">{selectedSource.name}</h3>
-                    <div className="flex items-center gap-2 text-gray-400 text-sm">
-                      <span className="px-2 py-1 bg-blue-600/20 text-blue-400 rounded text-xs uppercase">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-base sm:text-lg font-medium break-words">{selectedSource.name}</h3>
+                    <div className="flex items-center gap-2 text-gray-400 text-xs sm:text-sm mt-1 flex-wrap">
+                      <span className="px-1.5 py-0.5 bg-blue-600/20 text-blue-400 rounded text-xs uppercase">
                         {selectedSource.type}
                       </span>
                       <span>{formatFileSize(selectedSource.size)}</span>
@@ -406,43 +497,43 @@ function MaterialRepository() {
                   </div>
                 </div>
                 
-                <div className="grid grid-cols-2 gap-4 py-4 border-t border-gray-700">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 py-3 sm:py-4 border-t border-gray-700">
                   <div>
-                    <label className="text-sm text-gray-400 block mb-1">Upload Date</label>
-                    <p className="text-white">{formatDate(selectedSource.uploadedAt)}</p>
+                    <label className="text-xs sm:text-sm text-gray-400 block mb-1">Upload Date</label>
+                    <p className="text-white text-xs sm:text-base">{formatDate(selectedSource.uploadedAt)}</p>
                   </div>
                   <div>
-                    <label className="text-sm text-gray-400 block mb-1">File Type</label>
-                    <p className="text-white">{selectedSource.type.toUpperCase()}</p>
+                    <label className="text-xs sm:text-sm text-gray-400 block mb-1">File Type</label>
+                    <p className="text-white text-xs sm:text-base">{selectedSource.type.toUpperCase()}</p>
                   </div>
                   <div>
-                    <label className="text-sm text-gray-400 block mb-1">File Size</label>
-                    <p className="text-white">{formatFileSize(selectedSource.size)}</p>
+                    <label className="text-xs sm:text-sm text-gray-400 block mb-1">File Size</label>
+                    <p className="text-white text-xs sm:text-base">{formatFileSize(selectedSource.size)}</p>
                   </div>
                   <div>
-                    <label className="text-sm text-gray-400 block mb-1">Notebook</label>
-                    <p className="text-white">{selectedSource.notebookId}</p>
+                    <label className="text-xs sm:text-sm text-gray-400 block mb-1">Notebook</label>
+                    <p className="text-white text-xs sm:text-base truncate">{selectedSource.notebookId}</p>
                   </div>
                 </div>
 
                 {selectedSource.extractedText && (
-                  <div className="border-t border-gray-700 pt-4">
-                    <label className="text-sm text-gray-400 block mb-2">Extracted Content</label>
-                    <div className="bg-gray-900 rounded-lg p-4 max-h-40 overflow-y-auto">
-                      <p className="text-gray-300 text-sm whitespace-pre-wrap">
-                        {selectedSource.extractedText.substring(0, 500)}
-                        {selectedSource.extractedText.length > 500 && '...'}
+                  <div className="border-t border-gray-700 pt-3 sm:pt-4">
+                    <label className="text-xs sm:text-sm text-gray-400 block mb-2">Extracted Content</label>
+                    <div className="bg-gray-900 rounded-lg p-3 max-h-32 sm:max-h-40 overflow-y-auto">
+                      <p className="text-gray-300 text-xs sm:text-sm whitespace-pre-wrap">
+                        {selectedSource.extractedText.substring(0, 300)}
+                        {selectedSource.extractedText.length > 300 && '...'}
                       </p>
                     </div>
                   </div>
                 )}
 
-                <div className="flex gap-3 pt-4 border-t border-gray-700">
+                <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-3 sm:pt-4 border-t border-gray-700 sticky bottom-0 bg-gray-800 pb-3 sm:pb-0 -mx-3 sm:mx-0 px-3 sm:px-0">
                   <button
                     onClick={() => handleDownload(selectedSource)}
-                    className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+                    className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg transition-colors flex-1 text-sm"
                   >
-                    <Download className="w-4 h-4" />
+                    <Download className="w-3 h-3" />
                     Download
                   </button>
                   <button
@@ -450,9 +541,9 @@ function MaterialRepository() {
                       handleDeleteSource(selectedSource)
                       setSelectedSource(null)
                     }}
-                    className="flex-1 flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors"
+                    className="flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg transition-colors flex-1 text-sm"
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Trash2 className="w-3 h-3" />
                     Delete
                   </button>
                 </div>
