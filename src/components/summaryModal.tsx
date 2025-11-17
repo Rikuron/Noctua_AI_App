@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { X, Sparkles, Clock, FileText, Loader2 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { CustomScrollbarStyles } from './CustomScrollbar'
 import { generateAndSaveSummary, getNotebookSummaries } from '../lib/firestore/summaries'
 import { getNotebookSources } from '../lib/firestore/sources'
@@ -317,6 +318,7 @@ export function SummaryModal({ isOpen, onClose, notebookId }: SummaryModalProps)
                   <div className="bg-gray-700 rounded-lg p-6 border border-gray-600">
                     <div className="prose prose-invert max-w-none markdown-content">
                       <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
                         components={{
                           h1: ({node, ...props}) => <h1 className="text-2xl font-bold text-white mb-4" {...props} />,
                           h2: ({node, ...props}) => <h2 className="text-xl font-bold text-white mb-3 mt-6" {...props} />,
@@ -329,6 +331,16 @@ export function SummaryModal({ isOpen, onClose, notebookId }: SummaryModalProps)
                           em: ({node, ...props}) => <em className="italic text-gray-300" {...props} />,
                           code: ({node, ...props}) => <code className="bg-gray-800 px-2 py-1 rounded text-blue-300 text-sm" {...props} />,
                           blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-blue-500 pl-4 italic text-gray-300 my-3" {...props} />,
+                          table: ({node, ...props}) => (
+                            <div className="overflow-x-auto my-4">
+                              <table className="min-w-full border-2 border-gray-500" {...props} />
+                            </div>
+                          ),
+                          thead: ({node, ...props}) => <thead className="bg-gray-600" {...props} />,
+                          tbody: ({node, ...props}) => <tbody {...props} />,
+                          tr: ({node, ...props}) => <tr className="border-b-2 border-gray-500" {...props} />,
+                          th: ({node, ...props}) => <th className="border-2 border-gray-500 px-4 py-2 text-left font-semibold text-white bg-gray-700" {...props} />,
+                          td: ({node, ...props}) => <td className="border-2 border-gray-500 px-4 py-2 text-gray-200" {...props} />,
                         }}
                       >
                         {currentSummary.content}

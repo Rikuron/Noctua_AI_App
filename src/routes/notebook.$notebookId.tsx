@@ -4,6 +4,7 @@ import { useAuth } from '../components/authProvider'
 import { UploadSourcesModal } from '../components/uploadSourcesModal'
 import { SummaryModal } from '../components/summaryModal'
 import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { CustomScrollbarStyles } from '../components/CustomScrollbar'
 import { getNotebook } from '../lib/firestore/notebook'
 import type { Notebook } from '../types/notebook'
@@ -497,6 +498,7 @@ function NotebookDetail() {
                           ) : (
                             <div className="px-4 py-3 rounded-lg max-w-[85%] bg-gray-700">
                               <ReactMarkdown
+                                remarkPlugins={[remarkGfm]}
                                 components={{
                                   h1: ({node, ...props}) => <h1 className="text-xl font-bold text-white mb-3" {...props} />,
                                   h2: ({node, ...props}) => <h2 className="text-lg font-bold text-white mb-2" {...props} />,
@@ -510,6 +512,16 @@ function NotebookDetail() {
                                   code: ({node, ...props}) => <code className="bg-gray-800 px-2 py-1 rounded text-blue-300 text-sm" {...props} />,
                                   blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-blue-500 pl-3 italic text-gray-200 my-2" {...props} />,
                                   pre: ({node, ...props}) => <pre className="bg-gray-800 p-3 rounded my-2 overflow-x-auto" {...props} />,
+                                  table: ({node, ...props}) => (
+                                    <div className="overflow-x-auto my-3">
+                                      <table className="min-w-full border-2 border-gray-500 text-sm" {...props} />
+                                    </div>
+                                  ),
+                                  thead: ({node, ...props}) => <thead className="bg-gray-600" {...props} />,
+                                  tbody: ({node, ...props}) => <tbody {...props} />,
+                                  tr: ({node, ...props}) => <tr className="border-b-2 border-gray-500" {...props} />,
+                                  th: ({node, ...props}) => <th className="border-2 border-gray-500 px-3 py-2 text-left font-semibold text-white bg-gray-700" {...props} />,
+                                  td: ({node, ...props}) => <td className="border-2 border-gray-500 px-3 py-2 text-gray-100" {...props} />,
                                 }}
                               >
                                 {msg.text}
