@@ -1,6 +1,5 @@
 import { Link } from '@tanstack/react-router'
 import { CustomUserButton } from './userButton'
-import { Brain } from 'lucide-react'
 
 interface NavigationProps {
   currentPage?: 'notebooks' | 'repository' | 'admin'
@@ -36,12 +35,6 @@ export function Navigation({ currentPage }: NavigationProps) {
           }`}
         >
           Material Repository
-        </Link>
-        <Link 
-          to="/test" 
-          className={`text-lg font-medium transition-colors hover:text-blue-400 text-gray-300`}
-        >
-          Gemini API Test
         </Link>
         <CustomUserButton />
       </div>
