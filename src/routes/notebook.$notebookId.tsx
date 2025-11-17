@@ -23,11 +23,9 @@ import {
   Search,
   X,
   Download,
-  BookOpen,
   FileText,
   Check,
   Sparkles,
-  Filter,
   MoreVertical
 } from 'lucide-react'
 
@@ -852,7 +850,7 @@ function SourceCard({ source, isActive, onToggle, onDelete }: {
           {/* Toggle Button instead of checkbox */}
           <button
             onClick={onToggle}
-            className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-all mt-0.5 flex-shrink-0 ${
+            className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-all mt-0.5 shrink-0 ${
               isActive
                 ? 'bg-blue-500 border-blue-500'
                 : 'bg-gray-700 border-gray-500 hover:border-gray-400'
