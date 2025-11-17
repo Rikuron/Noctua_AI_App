@@ -1,8 +1,7 @@
 import {
-  collection, 
   doc,
   getDoc,
-  addDoc,
+  setDoc,
   updateDoc,
   Timestamp,
   arrayUnion,
@@ -17,7 +16,7 @@ export async function getOrCreateChat(notebookId: string): Promise<string> {
   const docSnap = await getDoc(docRef)
 
   if (!docSnap.exists()) {
-    await addDoc(collection(db, `notebooks/${notebookId}/chats`), {
+    await setDoc(docRef, {
       messages: [],
       createdAt: Timestamp.now()
     })
@@ -42,6 +41,7 @@ export async function addChatMessage(
   })
 }
 
+// Function to get all chat messages for a notebook
 export async function getChatMessages(
   notebookId: string,
   chatId: string

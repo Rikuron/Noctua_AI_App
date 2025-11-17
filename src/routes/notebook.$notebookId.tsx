@@ -65,11 +65,36 @@ function NotebookDetail() {
         
   // Chat state
   const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'bot'; text: string }[]>([])
+  const [currentChatId, setCurrentChatId] = useState<string | null>(null)
   const [chatInput, setChatInput] = useState('')
   const [chatLoading, setChatLoading] = useState(false)
   const [editingName, setEditingName] = useState(false)
   const [newName, setNewName] = useState('')
   const [savingName, setSavingName] = useState(false)
+
+  useEffect(() => {
+    async function loadChatHistory() {
+      if (!notebookId) return
+
+      try {
+        const { getOrCreateChat, getChatMessages } = await import('../lib/firestore/chats')
+        const chatId = await getOrCreateChat(notebookId)
+        setCurrentChatId(chatId)
+
+        const messages = await getChatMessages(notebookId, chatId)
+        // Convert ChatMessage format to local format
+        const formattedMessages = messages.map(msg => ({
+          role: msg.role === 'assistant' ? 'bot' as const : msg.role,
+          text: msg.content,
+        }))
+        setChatMessages(formattedMessages)
+      } catch (error) {
+        console.error('Error loading chat history:', error)
+      }
+    }
+
+    loadChatHistory()
+  }, [notebookId])
   
   // Utility to format file size
   function formatFileSize(bytes: number) {
@@ -459,7 +484,7 @@ function NotebookDetail() {
               <div className="flex-1 flex flex-col max-w-5xl w-full mx-auto p-4 overflow-hidden">
                 {/* Scrollable messages container */}
                 <div className="flex-1 bg-gray-800 rounded-lg p-4 mb-4 overflow-y-auto custom-scrollbar">
-                  {chatMessages.length === 0 ? (
+                  {chatMessages.length === 0 && !chatLoading ? (
                     <div className="text-center text-gray-400 py-8">Start chatting with your notebook sources!</div>
                   ) : (
                     <div className="space-y-4">
@@ -493,6 +518,27 @@ function NotebookDetail() {
                           )}
                         </div>
                       ))}
+                      
+                      {/* Loading indicator */}
+                      {chatLoading && (
+                        <div className="flex justify-start">
+                          <div className="px-4 py-3 rounded-lg bg-gray-700 flex items-center gap-3">
+                            <div className="relative w-8 h-8 flex items-center justify-center">
+                              <img 
+                                src="/logo512.png" 
+                                alt="Noctua AI" 
+                                className="w-8 h-8 animate-pulse"
+                              />
+                              <div className="absolute inset-0 bg-blue-400 rounded-full opacity-20 animate-ping"></div>
+                            </div>
+                            <div className="flex gap-1">
+                              <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                              <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                              <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -510,6 +556,15 @@ function NotebookDetail() {
                     setChatLoading(true)
 
                     try {
+                      // Save user message to database
+                      if (currentChatId) {
+                        const { addChatMessage } = await import('../lib/firestore/chats')
+                        await addChatMessage(notebookId, currentChatId, {
+                          role: 'user',
+                          content: userMessage,
+                        })
+                      }
+
                       // Fetch all notebook sources and their extracted text
                       const { getNotebookSources } = await import('../lib/firestore/sources')
                       const sources = await getNotebookSources(notebookId)
@@ -530,6 +585,15 @@ function NotebookDetail() {
                       }
 
                       setChatMessages(msgs => [...msgs, { role: 'bot', text: botReply }])
+
+                      // Save bot messages to database
+                      if (currentChatId) {
+                        const { addChatMessage } = await import('../lib/firestore/chats')
+                        await addChatMessage(notebookId, currentChatId, {
+                          role: 'assistant',
+                          content: botReply,
+                        })
+                      }
                     } catch (err: any) {
                       console.error('Error in chat:', err)
                       setChatMessages(msgs => [...msgs, { 
