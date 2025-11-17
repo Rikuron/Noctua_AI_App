@@ -133,7 +133,7 @@ export function SummaryModal({ isOpen, onClose, notebookId }: SummaryModalProps)
                 <h3 className="text-lg font-medium">Your Summaries ({summaries.length})</h3>
                 <button
                   onClick={() => setView('generate')}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                  className="flex items-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm"
                 >
                   <Sparkles className="w-4 h-4" />
                   Generate New Summary
@@ -153,7 +153,7 @@ export function SummaryModal({ isOpen, onClose, notebookId }: SummaryModalProps)
                   <p className="text-gray-400 mb-6">Generate your first AI summary from your sources</p>
                   <button
                     onClick={() => setView('generate')}
-                    className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm"
                   >
                     Generate Summary
                   </button>
@@ -252,13 +252,13 @@ export function SummaryModal({ isOpen, onClose, notebookId }: SummaryModalProps)
                   <div className="flex gap-3 mb-6">
                     <button
                       onClick={() => setSelectedSourceIds(sources.map(s => s.id))}
-                      className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors text-sm"
+                      className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors text-sm"
                     >
                       Select All
                     </button>
                     <button
                       onClick={() => setSelectedSourceIds([])}
-                      className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors text-sm"
+                      className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors text-sm"
                     >
                       Deselect All
                     </button>
@@ -267,16 +267,16 @@ export function SummaryModal({ isOpen, onClose, notebookId }: SummaryModalProps)
                   <button
                     onClick={handleGenerateSummary}
                     disabled={generating || selectedSourceIds.length === 0}
-                    className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                    className="w-full py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2 text-sm"
                   >
                     {generating ? (
                       <>
-                        <Loader2 className="w-5 h-5 animate-spin" />
+                        <Loader2 className="w-4 h-4 animate-spin" />
                         Generating Summary...
                       </>
                     ) : (
                       <>
-                        <Sparkles className="w-5 h-5" />
+                        <Sparkles className="w-4 h-4" />
                         Generate Summary ({selectedSourceIds.length} source{selectedSourceIds.length !== 1 ? 's' : ''})
                       </>
                     )}

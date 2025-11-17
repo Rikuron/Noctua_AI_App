@@ -10,7 +10,6 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TestRouteRouteImport } from './routes/test-route'
-import { Route as TestRouteImport } from './routes/test'
 import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as RepositoryRouteImport } from './routes/repository'
 import { Route as AdminRouteImport } from './routes/admin'
@@ -20,11 +19,6 @@ import { Route as NotebookNotebookIdRouteImport } from './routes/notebook.$noteb
 const TestRouteRoute = TestRouteRouteImport.update({
   id: '/test-route',
   path: '/test-route',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TestRoute = TestRouteImport.update({
-  id: '/test',
-  path: '/test',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SignInRoute = SignInRouteImport.update({
@@ -58,7 +52,6 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/repository': typeof RepositoryRoute
   '/sign-in': typeof SignInRoute
-  '/test': typeof TestRoute
   '/test-route': typeof TestRouteRoute
   '/notebook/$notebookId': typeof NotebookNotebookIdRoute
 }
@@ -67,7 +60,6 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/repository': typeof RepositoryRoute
   '/sign-in': typeof SignInRoute
-  '/test': typeof TestRoute
   '/test-route': typeof TestRouteRoute
   '/notebook/$notebookId': typeof NotebookNotebookIdRoute
 }
@@ -77,7 +69,6 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/repository': typeof RepositoryRoute
   '/sign-in': typeof SignInRoute
-  '/test': typeof TestRoute
   '/test-route': typeof TestRouteRoute
   '/notebook/$notebookId': typeof NotebookNotebookIdRoute
 }
@@ -88,7 +79,6 @@ export interface FileRouteTypes {
     | '/admin'
     | '/repository'
     | '/sign-in'
-    | '/test'
     | '/test-route'
     | '/notebook/$notebookId'
   fileRoutesByTo: FileRoutesByTo
@@ -97,7 +87,6 @@ export interface FileRouteTypes {
     | '/admin'
     | '/repository'
     | '/sign-in'
-    | '/test'
     | '/test-route'
     | '/notebook/$notebookId'
   id:
@@ -106,7 +95,6 @@ export interface FileRouteTypes {
     | '/admin'
     | '/repository'
     | '/sign-in'
-    | '/test'
     | '/test-route'
     | '/notebook/$notebookId'
   fileRoutesById: FileRoutesById
@@ -116,7 +104,6 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   RepositoryRoute: typeof RepositoryRoute
   SignInRoute: typeof SignInRoute
-  TestRoute: typeof TestRoute
   TestRouteRoute: typeof TestRouteRoute
   NotebookNotebookIdRoute: typeof NotebookNotebookIdRoute
 }
@@ -128,13 +115,6 @@ declare module '@tanstack/react-router' {
       path: '/test-route'
       fullPath: '/test-route'
       preLoaderRoute: typeof TestRouteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/test': {
-      id: '/test'
-      path: '/test'
-      fullPath: '/test'
-      preLoaderRoute: typeof TestRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sign-in': {
@@ -180,7 +160,6 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   RepositoryRoute: RepositoryRoute,
   SignInRoute: SignInRoute,
-  TestRoute: TestRoute,
   TestRouteRoute: TestRouteRoute,
   NotebookNotebookIdRoute: NotebookNotebookIdRoute,
 }
