@@ -1,28 +1,25 @@
-import { GoogleGenAI } from '@google/genai'
-
-const apiKey = import.meta.env.VITE_GEMINI_API_KEY
-
-if (!apiKey) throw new Error('Google Gemini API key is not set. Please check your environment variables.')
-
-const genAI = new GoogleGenAI({ apiKey })
+const API_ENDPOINT = '/api/gemini'
 
 // Function to Generate Summary of Source PDF 
 export async function generateSummary(sourceTexts: string[]): Promise<string> {
-  const combinedText = sourceTexts.join('\n\n---\n\n')
-
-  const prompt = `You are an educational AI assistant. Please provide a comprehensive summary of the following study materials. Focus in key concepts, main ideas, and important details that would help students learn and understand the content.
-  
-Study Materials:
-${combinedText}
-
-Summary:`
-
-  const response = await genAI.models.generateContent({
-    model: 'gemini-2.0-flash-exp',
-    contents: prompt,
+  const response = await fetch(API_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      action: 'generateSummary',
+      sourceTexts,
+    }),
   })
 
-  return response.text ?? ''
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.error || 'Failed to generate summary')
+  }
+
+  const data = await response.json()
+  return data.result
 }
 
 // Function to Chat with Sources
@@ -31,28 +28,26 @@ export async function chatWithSources(
   sourceTexts: string[],
   chatHistory: { role: string; content: string }[] = []
 ): Promise<string> {
-  const combinedSources = sourceTexts.join('\n\n---\n\n')
-
-  const historyText = chatHistory.length > 0
-    ? '\n\nPrevious Conversation:\n' +
-      chatHistory.map(msg => `${msg.role === 'user' ? 'Student': 'Assistant'}: ${msg.content}`).join('\n')
-    : ''
-
-  const prompt = `You are an educational AI assistant. Answer the student's question based on the provided study materials. If the answer is not in the materials, say so and provide general educational guidance.
-
-Study Materials:
-${combinedSources}${historyText}
-
-Current Student Question: ${question}
-
-Answer:`
-
-  const response = await genAI.models.generateContent({
-    model: 'gemini-2.0-flash-exp',
-    contents: prompt,
+  const response = await fetch(API_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      action: 'chatWithSources',
+      question,
+      sourceTexts,
+      chatHistory,
+    }),
   })
 
-  return response.text ?? ''
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.error || 'Failed to chat with sources')
+  }
+
+  const data = await response.json()
+  return data.result
 }
 
 // Function to Stream Chat Response
@@ -61,23 +56,46 @@ export async function streamChatResponse(
   sourceTexts: string[],
   onChunk: (text: string) => void
 ): Promise<void> {
-  const combinedSources = sourceTexts.join('\n\n---\n\n')
-
-  const prompt = `You are an educational AI assistant. Answer the student's question based on the provided study materials. If the answer is not in the materials, say so and provide general educational guidance.
-
-Study Materials:
-${combinedSources}
-
-Student Question: ${question}
-
-Answer: `
-
-  const stream = await genAI.models.generateContentStream({
-    model: 'gemini-2.0-flash-exp',
-    contents: prompt,
+  const response = await fetch(API_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      action: 'streamChatResponse',
+      question,
+      sourceTexts,
+    }),
   })
 
-  for await (const chunk of stream) {
-    if (chunk.text) onChunk(chunk.text)
+  if (!response.ok) {
+    throw new Error('Failed to stream chat response')
+  }
+
+  const reader = response.body?.getReader()
+  const decoder = new TextDecoder()
+
+  if (!reader) throw new Error('No response body')
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+
+    const chunk = decoder.decode(value)
+    const lines = chunk.split('\n')
+
+    for (const line of lines) {
+      if (line.startsWith('data: ')) {
+        const data = line.slice(6)
+        if (data === '[DONE]') return
+        
+        try {
+          const parsed = JSON.parse(data)
+          if (parsed.text) onChunk(parsed.text)
+        } catch (e) {
+          // Ignore parse errors
+        }
+      }
+    }
   }
 }
