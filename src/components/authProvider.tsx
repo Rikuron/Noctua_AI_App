@@ -1,7 +1,7 @@
 import { createContext, useContext, type ReactNode } from 'react'
 import { Navigate } from '@tanstack/react-router'
 import { useFirebaseAuth } from '../hooks/useFirebaseAuth'
-import { FullScreenLoading } from './loadingSpinner'
+import { AppLoader } from './ui/AppLoader'
 import type { User } from 'firebase/auth'
 
 interface AuthContextType {
@@ -36,7 +36,7 @@ export function useAuth() {
 
 export function ProtectedRoute({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth()
-  if (loading) return <FullScreenLoading message="Authenticating..." />
+  if (loading) return <AppLoader fullscreen label="Authenticating..." />
   if (!user) return <Navigate to="/sign-in" />
   return <>{children}</>
 }

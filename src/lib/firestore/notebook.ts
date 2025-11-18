@@ -33,6 +33,7 @@ export async function createNotebook(
       userId,
       name: input.name,
       description: input.description,
+      icon: input.icon ?? '📓',
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now()
     })
@@ -67,6 +68,7 @@ export async function getNotebook(notebookId: string): Promise<Notebook | null> 
     userId: data.userId,
     name: data.name,
     description: data.description,
+    icon: data.icon ?? '📓',
     createdAt: data.createdAt.toDate(),
     updatedAt: data.updatedAt.toDate()
   }
@@ -90,6 +92,7 @@ export async function getUserNotebooks(userId: string): Promise<Notebook[]> {
       userId: data.userId,
       name: data.name,
       description: data.description,
+      icon: data.icon ?? '📓',
       createdAt: data.createdAt.toDate(),
       updatedAt: data.updatedAt.toDate()
     })

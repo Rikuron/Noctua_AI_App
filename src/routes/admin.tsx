@@ -7,6 +7,7 @@ import { getNotebookSources } from '../lib/firestore/sources'
 import type { Notebook } from '../types/notebook'
 import type { Source } from '../types/source'
 import { Trash2, FileText, AlertTriangle } from 'lucide-react'
+import { AppLoader } from '../components/ui/AppLoader'
 
 export const Route = createFileRoute('/admin')({
   component: AdminPage,
@@ -81,7 +82,7 @@ function AdminPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
-        <div>Loading database contents...</div>
+        <AppLoader size="md" label="Loading database contents..." />
       </div>
     )
   }

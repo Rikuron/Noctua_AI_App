@@ -2,12 +2,11 @@ import { useState, useEffect } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { ProtectedRoute, useAuth } from '../components/authProvider'
 import { Navigation } from '../components/navigation'
-import { UploadSourcesModal } from '../components/uploadSourcesModal'
+import { UploadSourcesModal } from '../components/ui/uploadSourcesModal'
 import { PDFViewer } from '../components/pdfViewer'
 import { usePDFs } from '../hooks/usePDFs'
 import { 
   Search, 
-  Filter, 
   FileText, 
   Download, 
   Trash2, 
@@ -22,6 +21,7 @@ import {
 } from 'lucide-react'
 import { getAllUserSources, deleteSource } from '../lib/firestore/sources'
 import type { Source } from '../types/source'
+import { AppLoader } from '../components/ui/AppLoader'
 
 export const Route = createFileRoute('/repository')({
   component: MaterialRepository,
@@ -49,7 +49,6 @@ function MaterialRepository() {
   // Also try the usePDFs hook as a fallback
   useEffect(() => {
     if (!hookLoading && hookPdfs.length > 0 && sources.length === 0) {
-      console.log('Using PDFs from usePDFs hook as fallback:', hookPdfs)
       // Convert hookPdfs to Source format
       const convertedSources: Source[] = hookPdfs.map(pdf => ({
         id: pdf.id,
@@ -71,9 +70,7 @@ function MaterialRepository() {
       setLoading(true)
       setError(null)
       if (user) {
-        console.log('Loading sources for user:', user.uid)
         const userSources = await getAllUserSources(user.uid)
-        console.log('Found sources:', userSources.length)
         setSources(userSources.sort((a, b) => b.uploadedAt.getTime() - a.uploadedAt.getTime()))
       }
     } catch (error: any) {
@@ -187,15 +184,11 @@ function MaterialRepository() {
                   className="pl-8 pr-3 py-2 bg-gray-800 border border-gray-600 rounded-lg focus:outline-none focus:border-blue-500 text-white text-sm w-full sm:w-64"
                 />
               </div>
-              <button className="flex items-center gap-1 px-2 py-2 bg-gray-800 border border-gray-600 rounded-lg hover:bg-gray-700 transition-colors sm:flex hidden">
-                <Filter className="w-3 h-3" />
-                <span className="hidden sm:inline text-sm">Filter</span>
-              </button>
             </div>
             
             <button
               onClick={() => setShowUploadModal(true)}
-              className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 sm:py-2 rounded-lg transition-colors text-sm w-full sm:w-auto"
+              className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 hover:cursor-pointer text-white px-3 py-2 sm:py-2 rounded-lg transition-colors text-sm w-full sm:w-auto"
             >
               <Plus className="w-3 h-3 sm:w-4 sm:h-4" />
               <span>Add Document</span>
@@ -244,7 +237,7 @@ function MaterialRepository() {
           {/* Error Display */}
           {error && (
             <div className="mb-4 p-3 bg-red-500/10 border border-red-500/50 rounded-lg flex items-center gap-2">
-              <AlertCircle className="w-3 h-3 text-red-400 flex-shrink-0" />
+              <AlertCircle className="w-3 h-3 text-red-400 shrink-0" />
               <span className="text-red-400 text-xs">{error}</span>
             </div>
           )}
@@ -252,7 +245,7 @@ function MaterialRepository() {
           {/* Documents List */}
           {loading ? (
             <div className="flex items-center justify-center py-8">
-              <div className="text-gray-400 text-sm">Loading documents...</div>
+              <AppLoader size="md" label="Loading documents..." />
             </div>
           ) : filteredSources.length > 0 ? (
             <div className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
@@ -269,7 +262,7 @@ function MaterialRepository() {
                     {/* Desktop Layout */}
                     <div className="hidden sm:flex items-center justify-between">
                       <div className="flex items-center gap-4 flex-1">
-                        <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shrink-0">
                           <FileText className="w-4 h-4" />
                         </div>
                         <div className="flex-1 min-w-0">
@@ -295,7 +288,7 @@ function MaterialRepository() {
                             e.stopPropagation()
                             handleViewPdf(source)
                           }}
-                          className="p-1.5 text-blue-400 hover:text-blue-300 hover:bg-gray-700 rounded transition-colors"
+                          className="p-1.5 text-blue-400 hover:text-blue-300 hover:bg-gray-700 hover:cursor-pointer rounded transition-colors"
                           title="View PDF"
                         >
                           <Eye className="w-3 h-3" />
@@ -305,7 +298,7 @@ function MaterialRepository() {
                             e.stopPropagation()
                             handleDownload(source)
                           }}
-                          className="p-1.5 text-gray-400 hover:text-blue-400 hover:bg-gray-700 rounded transition-colors"
+                          className="p-1.5 text-gray-400 hover:text-blue-400 hover:bg-gray-700 hover:cursor-pointer rounded transition-colors"
                           title="Download"
                         >
                           <Download className="w-3 h-3" />
@@ -317,7 +310,7 @@ function MaterialRepository() {
                               handleDeleteSource(source)
                             }}
                             disabled={deleting === source.id}
-                            className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-gray-700 rounded transition-colors disabled:opacity-50"
+                            className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-gray-700 hover:cursor-pointer rounded transition-colors disabled:opacity-50"
                             title="Delete"
                           >
                             <Trash2 className="w-3 h-3" />
@@ -337,7 +330,7 @@ function MaterialRepository() {
                     {/* Mobile Layout - Ultra Compact */}
                     <div className="sm:hidden">
                       <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 bg-blue-600 rounded flex items-center justify-center flex-shrink-0">
+                        <div className="w-6 h-6 bg-blue-600 rounded flex items-center justify-center shrink-0">
                           <FileText className="w-3 h-3" />
                         </div>
                         <div className="flex-1 min-w-0">
@@ -483,11 +476,11 @@ function MaterialRepository() {
               </div>
               <div className="p-3 sm:p-6 space-y-3 sm:space-y-4 overflow-y-auto h-full pb-16 sm:pb-6">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 sm:w-12 sm:h-12 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <div className="w-8 h-8 sm:w-12 sm:h-12 bg-blue-600 rounded-lg flex items-center justify-center shrink-0">
                     <FileText className="w-4 h-4 sm:w-6 sm:h-6" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <h3 className="text-base sm:text-lg font-medium break-words">{selectedSource.name}</h3>
+                    <h3 className="text-base sm:text-lg font-medium wrap-break-word">{selectedSource.name}</h3>
                     <div className="flex items-center gap-2 text-gray-400 text-xs sm:text-sm mt-1 flex-wrap">
                       <span className="px-1.5 py-0.5 bg-blue-600/20 text-blue-400 rounded text-xs uppercase">
                         {selectedSource.type}

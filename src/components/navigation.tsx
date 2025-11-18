@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { CustomUserButton } from './userButton'
+import { CustomUserButton } from './ui/CustomUserButton'
 import { BookOpen, Library, Menu, X } from 'lucide-react'
 import { useState } from 'react'
 
@@ -67,83 +67,87 @@ export function Navigation({ currentPage }: NavigationProps) {
           </div>
 
           {/* User Button */}
-          <CustomUserButton />
+          <div className="hidden md:block">
+            <CustomUserButton />
+          </div>
         </div>
       </nav>
 
       {/* Mobile Sidebar Overlay */}
-      {isSidebarOpen && (
-        <div 
-          className="fixed inset-0 z-50 md:hidden"
+      <div
+        className={`fixed inset-0 z-50 md:hidden transition-opacity duration-300 ${
+          isSidebarOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        }`}
+      >
+        {/* Backdrop */}
+        <div
+          className="absolute inset-0 bg-black/50"
           onClick={() => setIsSidebarOpen(false)}
+        />
+        
+        {/* Sidebar */}
+        <div
+          className={`absolute left-0 top-0 bottom-0 w-80 bg-[#0f0f0f] border-r border-gray-800 shadow-lg transform transition-transform duration-300 ${
+            isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
+          onClick={(e) => e.stopPropagation()}
         >
-          {/* Backdrop */}
-          <div className="absolute inset-0 bg-black/50" />
-          
-          {/* Sidebar */}
-          <div 
-            className="absolute left-0 top-0 bottom-0 w-80 bg-[#0f0f0f] border-r border-gray-800 shadow-lg"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Sidebar Header */}
-            <div className="flex items-center justify-between p-4 border-b border-gray-800">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-transparent">
-                  <img 
-                    src="/logo192.png" 
-                    alt="Noctua AI Logo" 
-                    className="w-8 h-8 object-contain" 
-                  />
-                </div>
-                <span className="text-xl font-semibold text-white">Noctua AI</span>
+          {/* Sidebar Header */}
+          <div className="flex items-center justify-between p-4 border-b border-gray-800">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-transparent">
+                <img 
+                  src="/logo192.png" 
+                  alt="Noctua AI Logo" 
+                  className="w-8 h-8 object-contain" 
+                />
               </div>
-              <button
-                onClick={() => setIsSidebarOpen(false)}
-                className="p-2 text-gray-300 hover:text-white transition-colors"
-                aria-label="Close menu"
-              >
-                <X size={24} />
-              </button>
+              <span className="text-xl font-semibold text-white">Noctua AI</span>
             </div>
+            <button
+              onClick={() => setIsSidebarOpen(false)}
+              className="p-2 text-gray-300 hover:text-white transition-colors"
+              aria-label="Close menu"
+            >
+              <X size={24} />
+            </button>
+          </div>
 
-            {/* Navigation Links */}
-            <div className="p-4 space-y-2">
-              <Link 
-                to="/" 
-                onClick={() => setIsSidebarOpen(false)}
-                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                  currentPage === 'notebooks' 
-                    ? 'text-blue-400 bg-blue-400/10 border-l-2 border-blue-400' 
-                    : 'text-gray-300 hover:bg-gray-800'
-                }`}
-              >
-                <BookOpen size={20} />
-                <span className="font-medium">Notebooks</span>
-              </Link>
-              
-              <Link 
-                to="/repository" 
-                onClick={() => setIsSidebarOpen(false)}
-                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                  currentPage === 'repository' 
-                    ? 'text-blue-400 bg-blue-400/10 border-l-2 border-blue-400' 
-                    : 'text-gray-300 hover:bg-gray-800'
-                }`}
-              >
-                <Library size={20} />
-                <span className="font-medium">Material Repository</span>
-              </Link>
-            </div>
+          {/* Navigation Links */}
+          <div className="p-4 space-y-2">
+            <Link 
+              to="/" 
+              onClick={() => setIsSidebarOpen(false)}
+              className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                currentPage === 'notebooks' 
+                  ? 'text-blue-400 bg-blue-400/10 border-l-2 border-blue-400' 
+                  : 'text-gray-300 hover:bg-gray-800'
+              }`}
+            >
+              <BookOpen size={20} />
+              <span className="font-medium">Notebooks</span>
+            </Link>
+            
+            <Link 
+              to="/repository" 
+              onClick={() => setIsSidebarOpen(false)}
+              className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                currentPage === 'repository' 
+                  ? 'text-blue-400 bg-blue-400/10 border-l-2 border-blue-400' 
+                  : 'text-gray-300 hover:bg-gray-800'
+              }`}
+            >
+              <Library size={20} />
+              <span className="font-medium">Material Repository</span>
+            </Link>
+          </div>
 
-            {/* User Button in Sidebar */}
-            <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-800">
-              <div className="flex items-center justify-between">
-                <CustomUserButton />
-              </div>
-            </div>
+          {/* User Button in Sidebar */}
+          <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-800">
+            <CustomUserButton alwaysExpanded />
           </div>
         </div>
-      )}
+      </div>
     </>
   )
 }

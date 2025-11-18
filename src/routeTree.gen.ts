@@ -9,18 +9,12 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as TestRouteRouteImport } from './routes/test-route'
 import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as RepositoryRouteImport } from './routes/repository'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as NotebookNotebookIdRouteImport } from './routes/notebook.$notebookId'
 
-const TestRouteRoute = TestRouteRouteImport.update({
-  id: '/test-route',
-  path: '/test-route',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const SignInRoute = SignInRouteImport.update({
   id: '/sign-in',
   path: '/sign-in',
@@ -52,7 +46,6 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/repository': typeof RepositoryRoute
   '/sign-in': typeof SignInRoute
-  '/test-route': typeof TestRouteRoute
   '/notebook/$notebookId': typeof NotebookNotebookIdRoute
 }
 export interface FileRoutesByTo {
@@ -60,7 +53,6 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/repository': typeof RepositoryRoute
   '/sign-in': typeof SignInRoute
-  '/test-route': typeof TestRouteRoute
   '/notebook/$notebookId': typeof NotebookNotebookIdRoute
 }
 export interface FileRoutesById {
@@ -69,7 +61,6 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/repository': typeof RepositoryRoute
   '/sign-in': typeof SignInRoute
-  '/test-route': typeof TestRouteRoute
   '/notebook/$notebookId': typeof NotebookNotebookIdRoute
 }
 export interface FileRouteTypes {
@@ -79,23 +70,15 @@ export interface FileRouteTypes {
     | '/admin'
     | '/repository'
     | '/sign-in'
-    | '/test-route'
     | '/notebook/$notebookId'
   fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | '/admin'
-    | '/repository'
-    | '/sign-in'
-    | '/test-route'
-    | '/notebook/$notebookId'
+  to: '/' | '/admin' | '/repository' | '/sign-in' | '/notebook/$notebookId'
   id:
     | '__root__'
     | '/'
     | '/admin'
     | '/repository'
     | '/sign-in'
-    | '/test-route'
     | '/notebook/$notebookId'
   fileRoutesById: FileRoutesById
 }
@@ -104,19 +87,11 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   RepositoryRoute: typeof RepositoryRoute
   SignInRoute: typeof SignInRoute
-  TestRouteRoute: typeof TestRouteRoute
   NotebookNotebookIdRoute: typeof NotebookNotebookIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/test-route': {
-      id: '/test-route'
-      path: '/test-route'
-      fullPath: '/test-route'
-      preLoaderRoute: typeof TestRouteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/sign-in': {
       id: '/sign-in'
       path: '/sign-in'
@@ -160,7 +135,6 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   RepositoryRoute: RepositoryRoute,
   SignInRoute: SignInRoute,
-  TestRouteRoute: TestRouteRoute,
   NotebookNotebookIdRoute: NotebookNotebookIdRoute,
 }
 export const routeTree = rootRouteImport

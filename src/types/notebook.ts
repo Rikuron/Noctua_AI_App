@@ -5,9 +5,11 @@ export interface Notebook {
   description: string
   createdAt: Date
   updatedAt: Date
+  icon?: string
 }
 
 export interface NotebookInput {
   name: string
   description: string
+  icon?: string
 }

@@ -1,6 +1,5 @@
 // src/components/CustomScrollbar.tsx
 // Reusable custom scrollbar CSS for dark theme
-import React from 'react'
 
 export function CustomScrollbarStyles() {
   return (

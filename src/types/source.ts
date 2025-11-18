@@ -7,6 +7,7 @@ export interface Source {
   uploadedAt: Date
   extractedText: string
   type: 'pdf' | 'docx' | 'txt' | 'md'
+  fromRepository?: boolean
 }
 
 export interface SourceInput {
