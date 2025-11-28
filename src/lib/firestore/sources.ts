@@ -164,3 +164,67 @@ export async function getAllUserSources(userId: string): Promise<Source[]> {
     return []
   }
 }
+
+// Function to sync Storage files with Firestore
+export async function syncStorageWithFirestore(): Promise<number> {
+  try {
+    const { listAll, ref, getDownloadURL, getMetadata } = await import('firebase/storage')
+    const { collection, getDocs, addDoc, query, where, Timestamp } = await import('firebase/firestore')
+
+    console.log('Starting syncStorageWithFirestore...')
+
+    // 1. Get all files from Storage
+    const listRef = ref(storage, 'pdfs')
+    const res = await listAll(listRef)
+    console.log(`Found ${res.items.length} files in storage/pdfs`)
+
+    // 2. Get all documents from Firestore
+    const pdfsRef = collection(db, 'pdfs')
+    const snapshot = await getDocs(pdfsRef)
+    const existingUrls = new Set<string>()
+    snapshot.forEach(doc => {
+      const data = doc.data()
+      if (data.url) existingUrls.add(data.url)
+    })
+    console.log(`Found ${existingUrls.size} existing documents in firestore/pdfs`)
+
+    // 3. Find missing files and add them to Firestore
+    let addedCount = 0
+
+    for (const itemRef of res.items) {
+      try {
+        const url = await getDownloadURL(itemRef)
+
+        // Check if this URL already exists in Firestore
+        if (existingUrls.has(url)) {
+          continue
+        }
+
+        // Get metadata for size and time
+        const metadata = await getMetadata(itemRef)
+
+        console.log(`Adding missing file to Firestore: ${itemRef.name}`)
+
+        await addDoc(pdfsRef, {
+          name: itemRef.name,
+          url,
+          size: metadata.size,
+          type: 'pdf',
+          uploadedAt: metadata.timeCreated ? Timestamp.fromDate(new Date(metadata.timeCreated)) : Timestamp.now(),
+          notebookId: 'public-repository',
+          extractedText: ''
+        })
+
+        addedCount++
+      } catch (err) {
+        console.error(`Error processing file ${itemRef.name}:`, err)
+      }
+    }
+
+    console.log(`Sync complete. Added ${addedCount} missing documents.`)
+    return addedCount
+  } catch (error) {
+    console.error('Error syncing storage with firestore:', error)
+    throw error
+  }
+}

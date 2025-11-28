@@ -1,15 +1,16 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { ProtectedRoute, useAuth } from '../components/authProvider'
 import { Navigation } from '../components/navigation'
-import { UploadSourcesModal } from '../components/ui/uploadSourcesModal'
+import { UploadPublicDocumentModal } from '../components/ui/UploadPublicDocumentModal'
 import { PDFViewer } from '../components/pdfViewer'
 import { usePDFs } from '../hooks/usePDFs'
-import { 
-  Search, 
-  FileText, 
-  Download, 
-  Trash2, 
+import {
+  Search,
+  Filter,
+  FileText,
+  Download,
+  Trash2,
   Plus,
   Upload,
   Calendar,
@@ -19,9 +20,9 @@ import {
   X,
   MoreVertical
 } from 'lucide-react'
-import { getAllUserSources, deleteSource } from '../lib/firestore/sources'
+import { getAllUserSources, deleteSource, syncStorageWithFirestore } from '../lib/firestore/sources'
 import type { Source } from '../types/source'
-import { AppLoader } from '../components/ui/AppLoader'
+import { RefreshCw } from 'lucide-react'
 
 export const Route = createFileRoute('/repository')({
   component: MaterialRepository,
@@ -29,91 +30,120 @@ export const Route = createFileRoute('/repository')({
 
 function MaterialRepository() {
   const { user } = useAuth()
-  const { pdfs: hookPdfs, loading: hookLoading } = usePDFs()
+  const { pdfs: hookPdfs, loading: hookLoading, error: hookError, refetch } = usePDFs()
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedSource, setSelectedSource] = useState<Source | null>(null)
   const [viewingPdf, setViewingPdf] = useState<Source | null>(null)
-  const [sources, setSources] = useState<Source[]>([])
+
+  // Renamed to firestoreSources to be explicit
+  const [firestoreSources, setFirestoreSources] = useState<Source[]>([])
+
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<string | null>(null)
+  const [syncing, setSyncing] = useState(false)
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState<string | null>(null)
 
+  // Load Firestore sources if user is authenticated
   useEffect(() => {
-    if (user) {
-      loadSources()
+    async function loadSources() {
+      if (user && user.uid) {
+        try {
+          setLoading(true)
+          setError(null)
+          const userSources = await getAllUserSources(user.uid)
+          setFirestoreSources(userSources)
+        } catch (err: any) {
+          setError('Failed to load documents. Please try again.')
+        } finally {
+          setLoading(false)
+        }
+      }
     }
+    loadSources()
   }, [user])
 
-  // Also try the usePDFs hook as a fallback
-  useEffect(() => {
-    if (!hookLoading && hookPdfs.length > 0 && sources.length === 0) {
-      // Convert hookPdfs to Source format
-      const convertedSources: Source[] = hookPdfs.map(pdf => ({
-        id: pdf.id,
-        notebookId: 'hook-collection',
-        name: pdf.name,
-        url: pdf.url,
-        size: pdf.size,
-        uploadedAt: pdf.uploadedAt,
-        extractedText: '',
-        type: 'pdf' as const
-      }))
-      setSources(convertedSources)
-      setLoading(false)
-    }
-  }, [hookPdfs, hookLoading, sources.length])
+  // Merge Firestore sources with Storage PDFs
+  const sources = useMemo(() => {
+    const combined = [...firestoreSources]
+    const existingUrls = new Set(firestoreSources.map(s => s.url))
 
-  const loadSources = async () => {
+    if (!hookLoading && hookPdfs.length > 0) {
+      hookPdfs.forEach(pdf => {
+        if (!existingUrls.has(pdf.url)) {
+          combined.push({
+            id: pdf.id,
+            notebookId: 'public-repository', // Mark as public storage file
+            name: pdf.name,
+            url: pdf.url,
+            size: pdf.size,
+            uploadedAt: pdf.uploadedAt,
+            extractedText: '',
+            type: 'pdf'
+          })
+        }
+      })
+    }
+    return combined
+  }, [firestoreSources, hookPdfs, hookLoading])
+
+  const handleDownload = async (source: Source) => {
     try {
-      setLoading(true)
-      setError(null)
-      if (user) {
-        const userSources = await getAllUserSources(user.uid)
-        setSources(userSources.sort((a, b) => b.uploadedAt.getTime() - a.uploadedAt.getTime()))
-      }
-    } catch (error: any) {
-      console.error('Failed to load sources:', error)
-      if (error.code === 'permission-denied') {
-        setError('Access denied. Please make sure you are signed in and have proper permissions.')
-      } else {
-        setError('Failed to load documents. Please try again.')
-      }
-    } finally {
-      setLoading(false)
+      const response = await fetch(source.url)
+      if (!response.ok) throw new Error('Network response was not ok')
+
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = source.name
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error('Download failed:', error)
+      // Fallback: try to open in new tab
+      window.open(source.url, '_blank')
     }
   }
 
   const handleDeleteSource = async (source: Source) => {
-    if (!confirm(`Are you sure you want to delete "${source.name}"? This action cannot be undone.`)) {
-      return
-    }
+    if (!user) return
+    if (!confirm('Are you sure you want to delete this document?')) return
 
-    setDeleting(source.id)
     try {
+      setDeleting(source.id)
       await deleteSource(source.notebookId, source.id)
-      await loadSources() // Reload sources after deletion
-      setMobileMenuOpen(null)
-    } catch (error) {
-      console.error('Error deleting source:', error)
-      alert('Failed to delete document')
+      const userSources = await getAllUserSources(user.uid)
+      setFirestoreSources(userSources)
+    } catch (err) {
+      console.error('Error deleting source:', err)
+      setError('Failed to delete document. Please try again.')
     } finally {
       setDeleting(null)
     }
   }
 
-  const handleDownload = (source: Source) => {
-    const link = document.createElement('a')
-    link.href = source.url
-    link.download = source.name
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    
-    setTimeout(() => {
-      window.open(source.url, '_blank')
-    }, 500)
+  const handleSync = async () => {
+    if (!user) return
+    try {
+      setSyncing(true)
+      const addedCount = await syncStorageWithFirestore()
+      if (addedCount > 0) {
+        const userSources = await getAllUserSources(user.uid)
+        setFirestoreSources(userSources)
+        alert(`Successfully synced ${addedCount} documents from storage.`)
+      } else {
+        alert('Storage is already in sync with repository.')
+      }
+    } catch (err) {
+      console.error('Sync failed:', err)
+      alert('Failed to sync documents. Please try again.')
+    } finally {
+      setSyncing(false)
+    }
   }
 
   const handleViewPdf = (source: Source) => {
@@ -142,35 +172,32 @@ function MaterialRepository() {
     const now = new Date()
     const diffTime = Math.abs(now.getTime() - date.getTime())
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-    
     if (diffDays === 1) return 'Yesterday'
     if (diffDays < 7) return `${diffDays}d ago`
     if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`
-    
     return new Intl.DateTimeFormat('en-US', {
       month: 'short',
       day: 'numeric'
     }).format(date)
   }
 
-  const filteredSources = sources.filter(source =>
-    source.name.toLowerCase().includes(searchQuery.toLowerCase())
+  // Use sources for document listing (Firestore or fallback Storage)
+  const filteredSources = sources.filter(pdf =>
+    pdf.name.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
   return (
     <ProtectedRoute>
       <div className="min-h-screen bg-[#1a1a1a] text-white flex flex-col">
         <Navigation currentPage="repository" />
-
         <main className="flex-1 flex flex-col max-w-7xl mx-auto w-full px-3 sm:px-6 py-4 sm:py-8">
           {/* Header Section */}
           <div className="mb-4 sm:mb-8">
             <h1 className="text-xl sm:text-3xl font-bold mb-1 sm:mb-2">Material Repository</h1>
             <p className="text-gray-400 text-xs sm:text-base">
-              Access and manage your uploaded documents
+              Access and manage your uploaded PDFs (from storage only)
             </p>
           </div>
-
           {/* Actions Bar */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 sm:mb-6">
             <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -184,11 +211,24 @@ function MaterialRepository() {
                   className="pl-8 pr-3 py-2 bg-gray-800 border border-gray-600 rounded-lg focus:outline-none focus:border-blue-500 text-white text-sm w-full sm:w-64"
                 />
               </div>
+              <button className="flex items-center gap-1 px-2 py-2 bg-gray-800 border border-gray-600 rounded-lg hover:bg-gray-700 transition-colors sm:flex hidden">
+                <Filter className="w-3 h-3" />
+                <span className="hidden sm:inline text-sm">Filter</span>
+              </button>
+              <button
+                onClick={handleSync}
+                disabled={syncing}
+                className="flex items-center gap-1 px-2 py-2 bg-gray-800 border border-gray-600 rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50"
+                title="Sync Storage"
+              >
+                <RefreshCw className={`w-3 h-3 ${syncing ? 'animate-spin' : ''}`} />
+                <span className="hidden sm:inline text-sm">Sync</span>
+              </button>
             </div>
-            
+
             <button
               onClick={() => setShowUploadModal(true)}
-              className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 hover:cursor-pointer text-white px-3 py-2 sm:py-2 rounded-lg transition-colors text-sm w-full sm:w-auto"
+              className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 sm:py-2 rounded-lg transition-colors text-sm w-full sm:w-auto"
             >
               <Plus className="w-3 h-3 sm:w-4 sm:h-4" />
               <span>Add Document</span>
@@ -237,7 +277,7 @@ function MaterialRepository() {
           {/* Error Display */}
           {error && (
             <div className="mb-4 p-3 bg-red-500/10 border border-red-500/50 rounded-lg flex items-center gap-2">
-              <AlertCircle className="w-3 h-3 text-red-400 shrink-0" />
+              <AlertCircle className="w-3 h-3 text-red-400 flex-shrink-0" />
               <span className="text-red-400 text-xs">{error}</span>
             </div>
           )}
@@ -245,7 +285,7 @@ function MaterialRepository() {
           {/* Documents List */}
           {loading ? (
             <div className="flex items-center justify-center py-8">
-              <AppLoader size="md" label="Loading documents..." />
+              <div className="text-gray-400 text-sm">Loading PDFs...</div>
             </div>
           ) : filteredSources.length > 0 ? (
             <div className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
@@ -285,45 +325,35 @@ function MaterialRepository() {
                       <div className="flex items-center gap-1">
                         <button
                           onClick={(e) => {
-                            e.stopPropagation()
-                            handleViewPdf(source)
+                            e.stopPropagation();
+                            handleViewPdf(source);
                           }}
-                          className="p-1.5 text-blue-400 hover:text-blue-300 hover:bg-gray-700 hover:cursor-pointer rounded transition-colors"
+                          className="p-1.5 text-blue-400 hover:text-blue-300 hover:bg-gray-700 rounded transition-colors"
                           title="View PDF"
                         >
                           <Eye className="w-3 h-3" />
                         </button>
                         <button
                           onClick={(e) => {
-                            e.stopPropagation()
-                            handleDownload(source)
+                            e.stopPropagation();
+                            handleDownload(source);
                           }}
-                          className="p-1.5 text-gray-400 hover:text-blue-400 hover:bg-gray-700 hover:cursor-pointer rounded transition-colors"
+                          className="p-1.5 text-gray-400 hover:text-blue-400 hover:bg-gray-700 rounded transition-colors"
                           title="Download"
                         >
                           <Download className="w-3 h-3" />
                         </button>
-                        {source.notebookId && source.notebookId !== 'hook-collection' && source.notebookId !== 'global-pdfs' ? (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleDeleteSource(source)
-                            }}
-                            disabled={deleting === source.id}
-                            className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-gray-700 hover:cursor-pointer rounded transition-colors disabled:opacity-50"
-                            title="Delete"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </button>
-                        ) : (
-                          <button
-                            className="p-1.5 text-gray-700 bg-gray-900 rounded cursor-not-allowed opacity-50"
-                            title="Cannot delete global or fallback document"
-                            disabled
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </button>
-                        )}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteSource(source);
+                          }}
+                          disabled={deleting === source.id}
+                          className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-gray-700 rounded transition-colors disabled:opacity-50"
+                          title="Delete"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
                       </div>
                     </div>
 
@@ -346,21 +376,20 @@ function MaterialRepository() {
                         <div className="relative">
                           <button
                             onClick={(e) => {
-                              e.stopPropagation()
-                              setMobileMenuOpen(mobileMenuOpen === source.id ? null : source.id)
+                              e.stopPropagation();
+                              setMobileMenuOpen(mobileMenuOpen === source.id ? null : source.id);
                             }}
                             className="p-1 text-gray-400 hover:text-white transition-colors"
                           >
                             <MoreVertical className="w-3 h-3" />
                           </button>
-                          
                           {/* Mobile Action Menu */}
                           {mobileMenuOpen === source.id && (
                             <div className="absolute right-0 top-6 bg-gray-700 border border-gray-600 rounded-lg shadow-lg z-10 min-w-28">
                               <button
                                 onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleViewPdf(source)
+                                  e.stopPropagation();
+                                  handleViewPdf(source);
                                 }}
                                 className="flex items-center gap-2 w-full px-2 py-1.5 text-xs text-white hover:bg-gray-600 transition-colors first:rounded-t-lg"
                               >
@@ -369,35 +398,25 @@ function MaterialRepository() {
                               </button>
                               <button
                                 onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleDownload(source)
+                                  e.stopPropagation();
+                                  handleDownload(source);
                                 }}
                                 className="flex items-center gap-2 w-full px-2 py-1.5 text-xs text-white hover:bg-gray-600 transition-colors"
                               >
                                 <Download className="w-3 h-3" />
                                 Download
                               </button>
-                              {source.notebookId && source.notebookId !== 'hook-collection' && source.notebookId !== 'global-pdfs' ? (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    handleDeleteSource(source)
-                                  }}
-                                  disabled={deleting === source.id}
-                                  className="flex items-center gap-2 w-full px-2 py-1.5 text-xs text-red-400 hover:bg-gray-600 transition-colors last:rounded-b-lg disabled:opacity-50"
-                                >
-                                  <Trash2 className="w-3 h-3" />
-                                  Delete
-                                </button>
-                              ) : (
-                                <button
-                                  className="flex items-center gap-2 w-full px-2 py-1.5 text-xs text-gray-500 cursor-not-allowed last:rounded-b-lg"
-                                  disabled
-                                >
-                                  <Trash2 className="w-3 h-3" />
-                                  Delete
-                                </button>
-                              )}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteSource(source);
+                                }}
+                                disabled={deleting === source.id}
+                                className="flex items-center gap-2 w-full px-2 py-1.5 text-xs text-red-400 hover:bg-gray-600 transition-colors last:rounded-b-lg disabled:opacity-50"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                                Delete
+                              </button>
                             </div>
                           )}
                         </div>
@@ -414,7 +433,7 @@ function MaterialRepository() {
                 {searchQuery ? 'No matching documents' : 'No documents yet'}
               </h3>
               <p className="text-gray-400 mb-4 text-center max-w-md text-xs sm:text-base">
-                {searchQuery 
+                {searchQuery
                   ? 'Try adjusting your search terms'
                   : 'Upload documents to your notebooks to see them here.'
                 }
@@ -445,23 +464,23 @@ function MaterialRepository() {
 
         {/* Upload Modal */}
         {showUploadModal && (
-          <UploadSourcesModal
+          <UploadPublicDocumentModal
             isOpen={showUploadModal}
             onClose={() => setShowUploadModal(false)}
             onUpload={() => {
               setShowUploadModal(false)
-              loadSources()
+              refetch()
             }}
           />
         )}
 
         {/* Document Details Modal - Compact for Mobile */}
         {selectedSource && (
-          <div 
+          <div
             className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center p-0 sm:p-4 z-50"
             onClick={() => setSelectedSource(null)}
           >
-            <div 
+            <div
               className="bg-gray-800 rounded-t-2xl sm:rounded-lg border border-gray-700 w-full sm:max-w-2xl sm:max-h-[80vh] overflow-hidden h-[80vh] sm:h-auto"
               onClick={(e) => e.stopPropagation()}
             >
@@ -476,11 +495,11 @@ function MaterialRepository() {
               </div>
               <div className="p-3 sm:p-6 space-y-3 sm:space-y-4 overflow-y-auto h-full pb-16 sm:pb-6">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 sm:w-12 sm:h-12 bg-blue-600 rounded-lg flex items-center justify-center shrink-0">
+                  <div className="w-8 h-8 sm:w-12 sm:h-12 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
                     <FileText className="w-4 h-4 sm:w-6 sm:h-6" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <h3 className="text-base sm:text-lg font-medium wrap-break-word">{selectedSource.name}</h3>
+                    <h3 className="text-base sm:text-lg font-medium break-words">{selectedSource.name}</h3>
                     <div className="flex items-center gap-2 text-gray-400 text-xs sm:text-sm mt-1 flex-wrap">
                       <span className="px-1.5 py-0.5 bg-blue-600/20 text-blue-400 rounded text-xs uppercase">
                         {selectedSource.type}
@@ -489,7 +508,7 @@ function MaterialRepository() {
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 py-3 sm:py-4 border-t border-gray-700">
                   <div>
                     <label className="text-xs sm:text-sm text-gray-400 block mb-1">Upload Date</label>
