@@ -9,8 +9,7 @@ import {
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { db, storage } from '../../firebase'
 import type { Source, SourceInput } from '../../types/source'
-import { extractTextFromPDF } from '../pdfExtractor'
-
+import { extractTextFromFile } from '../fileExtractor'
 
 // Function to add a new source to a notebook
 export async function addSource(
@@ -19,22 +18,35 @@ export async function addSource(
 ): Promise<string> {
   // 1. Upload file to Firebase Storage
   const storageRef = ref(storage, `notebooks/${notebookId}/sources/${input.file.name}`)
-  await uploadBytes(storageRef, input.file)
+
+  // Helper to force correct MIME types
+  const getMimeType = (name: string) => {
+    const ext = name.split('.').pop()?.toLowerCase()
+    if (ext === 'pdf') return 'application/pdf'
+    if (ext === 'docx') return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    if (ext === 'md') return 'text/markdown'
+    if (ext === 'txt') return 'text/plain'
+    return 'application/octet-stream'
+  }
+
+  const metadata = {
+    contentType: getMimeType(input.file.name)
+  }
+
+  await uploadBytes(storageRef, input.file, metadata)
   const url = await getDownloadURL(storageRef)
 
   // 2. Extract text from the uploaded file
   let extractedText = ''
-  if (input.type === 'pdf') {
-    try {
-      extractedText = await extractTextFromPDF(input.file)
-    } catch (error) {
-      console.error('Error extracting text from PDF:', error)
-      extractedText = 'Failed to extract text from PDF. Please try again.'
-    }
+  try {
+    extractedText = await extractTextFromFile(input.file)
+  } catch (error) {
+    console.error('Error extracting text from file:', error)
+    extractedText = 'Failed to extract text from file. Please try again.'
   }
 
   // 3. Save to Firestore
-  const sourcesRef= collection(db, `notebooks/${notebookId}/sources`)
+  const sourcesRef = collection(db, `notebooks/${notebookId}/sources`)
   const docRef = await addDoc(sourcesRef, {
     name: input.file.name,
     url,
@@ -66,7 +78,7 @@ export async function getNotebookSources(notebookId: string): Promise<Source[]> 
       type: data.type
     })
   })
-  
+
   return sources
 }
 

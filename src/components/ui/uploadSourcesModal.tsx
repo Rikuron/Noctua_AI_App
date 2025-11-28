@@ -39,16 +39,38 @@ export function UploadSourcesModal({ isOpen, onClose, onUpload, notebookId }: Up
     e.stopPropagation()
   }
 
+  const getFileType = (filename: string) => {
+    const ext = filename.split('.').pop()?.toLowerCase()
+    switch (ext) {
+      case 'pdf':
+        return 'pdf'
+      case 'docx':
+        return 'docx'
+      case 'txt':
+        return 'txt'
+      case 'md':
+        return 'md'
+      default:
+        return null
+    }
+  }
+
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
     setDragActive(false)
-    const files = Array.from(e.dataTransfer.files).filter(f => f.type === 'application/pdf')
+
+    // Filter for all supported types
+    const files = Array.from(e.dataTransfer.files).filter(f => {
+      return getFileType(f.name) !== null
+    })
     setSelectedFiles(files)
   }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files ? Array.from(e.target.files).filter(f => f.type === 'application/pdf') : []
+    const files = e.target.files ? Array.from(e.target.files).filter(f => {
+      return getFileType(f.name) !== null
+    }) : []
     setSelectedFiles(files)
   }
 
@@ -78,10 +100,13 @@ export function UploadSourcesModal({ isOpen, onClose, onUpload, notebookId }: Up
       try {
         setUploadProgress(prev => ({ ...prev, [file.name]: 'uploading' }))
 
+        const type = getFileType(file.name)
+        if (!type) throw new Error('Unsupported file type')
+
         const sourceInput: SourceInput = {
           name: file.name,
           file: file,
-          type: 'pdf'
+          type: type as any
         }
 
         const sourceId = await addSource(notebookId, sourceInput)
@@ -154,13 +179,13 @@ export function UploadSourcesModal({ isOpen, onClose, onUpload, notebookId }: Up
                 multiple
                 className="hidden"
                 onChange={handleFileChange}
-                accept=".pdf"
+                accept=".pdf, .docx, .txt, .md"
               />
             </label>{' '}
             to upload
           </p>
           <p className="text-xs text-gray-500">
-            Supported file types: PDF only (for now)
+            Supported file types: PDF, DOCX, TXT, MD
           </p>
         </div>
 
@@ -200,7 +225,7 @@ export function UploadSourcesModal({ isOpen, onClose, onUpload, notebookId }: Up
           <button
             onClick={handleUpload}
             disabled={uploading || !notebookId}
-            className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors"
+            className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 cursor-pointer disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors"
           >
             {uploading ? 'Uploading...' : `Upload ${selectedFiles.length} file(s)`}
           </button>
