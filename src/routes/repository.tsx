@@ -20,7 +20,7 @@ import {
   X,
   MoreVertical
 } from 'lucide-react'
-import { getAllUserSources, deleteSource, syncStorageWithFirestore } from '../lib/firestore/sources'
+import { getAllUserSources, deleteSource } from '../lib/firestore/sources'
 import type { Source } from '../types/source'
 // import { RefreshCw } from 'lucide-react'
 
@@ -285,10 +285,10 @@ function MaterialRepository() {
           </div>
 
           {/* Error Display */}
-          {error && (
+          {(error || hookError) && (
             <div className="mb-4 p-3 bg-red-500/10 border border-red-500/50 rounded-lg flex items-center gap-2">
               <AlertCircle className="w-3 h-3 text-red-400 flex-shrink-0" />
-              <span className="text-red-400 text-xs">{error}</span>
+              <span className="text-red-400 text-xs">{error || hookError}</span>
             </div>
           )}
 
