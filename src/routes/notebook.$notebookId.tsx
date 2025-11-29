@@ -1,8 +1,8 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { useAuth } from '../components/authProvider'
-import { UploadSourcesModal } from '../components/ui/uploadSourcesModal'
-import { SummaryModal } from '../components/ui/summaryModal'
+import { UploadSourcesModal } from '../components/modals/uploadSourcesModal'
+import { SummaryModal } from '../components/modals/summaryModal'
 import { CustomScrollbarStyles } from '../components/CustomScrollbar'
 import { getNotebook } from '../lib/firestore/notebook'
 import type { Notebook } from '../types/notebook'
@@ -24,12 +24,12 @@ function NotebookDetail() {
   const { notebookId } = Route.useParams()
   const navigate = useNavigate()
   const { user } = useAuth()
-  
+
   // Custom hooks - replace all the manual fetching
   const { sources: chatbotSources, refetch: refetchSources } = useNotebookSources(notebookId)
   const { messages: chatMessages, sending: chatLoading, sendMessage } = useChatHistory(notebookId)
   const { pdfs: globalPdfs, loading: pdfsLoading, error: pdfsError } = useGlobalPdfs()
-  
+
   // UI state only
   const [activeSourceIds, setActiveSourceIds] = useState<string[]>([])
   const [showUploadModal, setShowUploadModal] = useState(false)
@@ -38,7 +38,7 @@ function NotebookDetail() {
   const [activeTab, setActiveTab] = useState<'chat' | 'sources' | 'studio'>('chat')
   const [notebook, setNotebook] = useState<Notebook | null>(null)
   const [loading, setLoading] = useState(true)
-  
+
   // Auto-activate all sources when they load
   useEffect(() => {
     if (chatbotSources.length > 0) {
@@ -49,7 +49,7 @@ function NotebookDetail() {
   useEffect(() => {
     async function loadNotebook() {
       if (!user) return
-      
+
       try {
         const notebookData = await getNotebook(notebookId)
         if (notebookData) {

@@ -8,6 +8,8 @@ export interface Source {
   extractedText: string
   type: 'pdf' | 'docx' | 'txt' | 'md'
   fromRepository?: boolean
+  uploadedBy?: string // Username of uploader if from Public Repository
+  uploaderId?: string // User ID of uploader if from Public Repository
 }
 
 export interface SourceInput {

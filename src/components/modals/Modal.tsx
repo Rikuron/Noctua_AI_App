@@ -1,6 +1,7 @@
 import { X } from 'lucide-react'
 import { useEffect } from 'react'
 import { CustomScrollbarStyles } from '../CustomScrollbar'
+import { useLockBodyScroll } from '../../hooks/useLockBodyScroll'
 
 interface ModalProps {
   isOpen: boolean
@@ -40,17 +41,7 @@ export function Modal({
     full: 'max-w-full mx-4'
   }
 
-  // Prevent body scroll when modal is open
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden'
-    } else {
-      document.body.style.overflow = ''
-    }
-    return () => {
-      document.body.style.overflow = ''
-    }
-  }, [isOpen])
+  useLockBodyScroll(isOpen)
 
   // Handle escape key
   useEffect(() => {
@@ -111,7 +102,7 @@ export function Modal({
         )}
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar">
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
           {children}
         </div>
       </div>

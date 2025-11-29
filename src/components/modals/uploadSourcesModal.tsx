@@ -4,7 +4,7 @@ import { addSource } from '../../lib/firestore/sources'
 import type { SourceInput } from '../../types/source'
 import { formatFileSize } from '../../formatters'
 import { Modal } from './Modal'
-import { ErrorMessage } from './ErrorMessage'
+import { ErrorMessage } from '../ui/ErrorMessage'
 
 interface UploadSourcesModalProps {
   isOpen: boolean
@@ -17,7 +17,7 @@ export function UploadSourcesModal({ isOpen, onClose, onUpload, notebookId }: Up
   const [dragActive, setDragActive] = useState(false)
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
   const [uploading, setUploading] = useState(false)
-  const [uploadProgress, setUploadProgress] = useState<{[key: string]: 'pending' | 'uploading' | 'success' | 'error'}>({})
+  const [uploadProgress, setUploadProgress] = useState<{ [key: string]: 'pending' | 'uploading' | 'success' | 'error' }>({})
   const [error, setError] = useState<string | null>(null)
 
   if (!isOpen) return null
@@ -88,7 +88,7 @@ export function UploadSourcesModal({ isOpen, onClose, onUpload, notebookId }: Up
     setUploading(true)
     setError(null)
 
-    const progress: {[key: string]: 'pending' | 'uploading' | 'success' | 'error'} = {}
+    const progress: { [key: string]: 'pending' | 'uploading' | 'success' | 'error' } = {}
     selectedFiles.forEach(file => {
       progress[file.name] = 'pending'
     })
@@ -111,7 +111,7 @@ export function UploadSourcesModal({ isOpen, onClose, onUpload, notebookId }: Up
 
         const sourceId = await addSource(notebookId, sourceInput)
         uploadedSources.push({ id: sourceId, name: file.name })
-        
+
         setUploadProgress(prev => ({ ...prev, [file.name]: 'success' }))
       } catch (error: any) {
         console.error('Error uploading file: ', file.name, error)
@@ -147,7 +147,7 @@ export function UploadSourcesModal({ isOpen, onClose, onUpload, notebookId }: Up
             <p className="text-sm text-yellow-400">⚠️ No notebook selected. Please close and try again.</p>
           </div>
         )}
-        
+
         <p className="text-sm text-gray-400 mb-6">
           The AI will extract text and use it to answer your questions.
         </p>
@@ -156,11 +156,10 @@ export function UploadSourcesModal({ isOpen, onClose, onUpload, notebookId }: Up
 
         {/* Upload Area */}
         <div
-          className={`border-2 border-dashed rounded-xl p-8 text-center mb-6 transition-colors ${
-            dragActive 
-              ? 'border-blue-500 bg-blue-500/10' 
+          className={`border-2 border-dashed rounded-xl p-8 text-center mb-6 transition-colors ${dragActive
+              ? 'border-blue-500 bg-blue-500/10'
               : 'border-gray-600 hover:border-gray-500'
-          }`}
+            }`}
           onDragEnter={handleDragEnter}
           onDragLeave={handleDragLeave}
           onDragOver={handleDragOver}

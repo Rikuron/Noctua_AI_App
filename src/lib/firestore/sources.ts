@@ -91,50 +91,54 @@ export async function deleteSource(notebookId: string, sourceId: string): Promis
 // Function to delete a public document from the global pdfs collection
 export async function deletePublicDocument(documentId: string): Promise<void> {
   // Delete the Firestore document and its corresponding storage file
-  const docRef = doc(db, 'pdfs', documentId)
+  const docRef = doc(db, 'public-sources', documentId)
+
   // Get the document to retrieve the file name
   const { getDoc } = await import('firebase/firestore')
   const docSnap = await getDoc(docRef)
+
   if (docSnap.exists()) {
     const data = docSnap.data() as any
     const fileName = data.name
+    
     if (fileName) {
       const { deleteObject } = await import('firebase/storage')
-      const storageRef = ref(storage, `pdfs/${fileName}`)
+      
       try {
-        await deleteObject(storageRef)
-      } catch (err) {
-        console.error('Failed to delete storage file:', err)
+        const newStorageRef = ref(storage, `public-sources/${fileName}`)
+        await deleteObject(newStorageRef)
+      } catch (Err) {
+        try {
+          const oldStorageRef = ref(storage, `pdfs/${fileName}`)
+          await deleteObject(oldStorageRef)
+        } catch (oldErr) {
+          console.error('Failed to delete storage file:', oldErr)
+        }
       }
     }
   }
+
   // Finally delete the Firestore document
   await deleteDoc(docRef)
 }
 
 // Function to get all sources by trying multiple approaches
 export async function getAllUserSources(userId: string): Promise<Source[]> {
-  console.log('getAllUserSources called for user:', userId)
-
   try {
     const allSources: Source[] = []
     const seenUrls = new Set<string>() // Track URLs to prevent duplicates
 
-    // Approach 1: Try Global PDFs collection first
+    // Approach 1: Try Global Public Sources collection first
     try {
-      console.log('Trying global PDFs collection...')
-      const pdfsRef = collection(db, 'pdfs')
-      const pdfsSnapshot = await getDocs(pdfsRef)
+      const publicSourcesRef = collection(db, 'public-sources')
+      const publicSourcesSnapshot = await getDocs(publicSourcesRef)
 
-      console.log('Found', pdfsSnapshot.size, 'documents in global PDFs collection')
-      pdfsSnapshot.forEach(async (doc) => {
+      publicSourcesSnapshot.forEach(async (doc) => {
         const data = doc.data()
         const url = data.url || data.downloadURL || data.fileURL || ''
 
         // Skip if URL has already been seen
         if (url && seenUrls.has(url)) return
-
-        console.log('PDF document: ', { id: doc.id, ...data })
 
         if (url) seenUrls.add(url)
 
@@ -146,24 +150,23 @@ export async function getAllUserSources(userId: string): Promise<Source[]> {
           size: data.size || data.fileSize || 0,
           uploadedAt: data.uploadedAt?.toDate() || data.createdAt?.toDate() || data.timestamp?.toDate() || new Date(),
           extractedText: data.extractedText || data.text || '',
-          type: data.type || 'pdf'
+          type: data.type || 'pdf',
+          uploadedBy: data.uploadedBy || 'Unknown',
+          uploaderId: data.uploaderId || 'Unknown'
         })
       })
     } catch (error) {
-      console.log('Error accessing global PDFs collection:', error)
+      console.log('Error accessing global public-sources collection:', error)
     }
 
     // Approach 2: Check user's notebooks for sources
     try {
       const { getUserNotebooks } = await import('./notebook')
       const userNotebooks = await getUserNotebooks(userId)
-      console.log('Found', userNotebooks.length, 'notebooks for user:', userId)
 
       for (const notebook of userNotebooks) {
         try {
-          console.log(`Checking sources for notebook: ${notebook.id} (${notebook.name})`)
           const sources = await getNotebookSources(notebook.id)
-          console.log(`Found ${sources.length} sources in notebook: ${notebook.id}`)
 
           // Add sources, skipping duplicates
           sources.forEach(source => {
@@ -180,7 +183,6 @@ export async function getAllUserSources(userId: string): Promise<Source[]> {
       console.log('Error accessing user notebooks:', error)
     }
 
-    console.log('Found a total of ', allSources.length, 'sources across all approaches')
     return allSources
 
   } catch (error) {
@@ -195,22 +197,18 @@ export async function syncStorageWithFirestore(): Promise<number> {
     const { listAll, ref, getDownloadURL, getMetadata } = await import('firebase/storage')
     const { collection, getDocs, addDoc, Timestamp } = await import('firebase/firestore')
 
-    console.log('Starting syncStorageWithFirestore...')
-
     // 1. Get all files from Storage
-    const listRef = ref(storage, 'pdfs')
+    const listRef = ref(storage, 'public-sources')
     const res = await listAll(listRef)
-    console.log(`Found ${res.items.length} files in storage/pdfs`)
 
     // 2. Get all documents from Firestore
-    const pdfsRef = collection(db, 'pdfs')
-    const snapshot = await getDocs(pdfsRef)
+    const publicSourcesRef = collection(db, 'public-sources')
+    const snapshot = await getDocs(publicSourcesRef)
     const existingUrls = new Set<string>()
     snapshot.forEach(doc => {
       const data = doc.data()
       if (data.url) existingUrls.add(data.url)
     })
-    console.log(`Found ${existingUrls.size} existing documents in firestore/pdfs`)
 
     // 3. Find missing files and add them to Firestore
     let addedCount = 0
@@ -226,17 +224,17 @@ export async function syncStorageWithFirestore(): Promise<number> {
 
         // Get metadata for size and time
         const metadata = await getMetadata(itemRef)
+        const uploadedBy = metadata.customMetadata?.uploadedBy || 'Unknown'
 
-        console.log(`Adding missing file to Firestore: ${itemRef.name}`)
-
-        await addDoc(pdfsRef, {
+        await addDoc(publicSourcesRef, {
           name: itemRef.name,
           url,
           size: metadata.size,
           type: 'pdf',
           uploadedAt: metadata.timeCreated ? Timestamp.fromDate(new Date(metadata.timeCreated)) : Timestamp.now(),
           notebookId: 'public-repository',
-          extractedText: ''
+          extractedText: '',
+          uploadedBy: uploadedBy
         })
 
         addedCount++
@@ -245,7 +243,6 @@ export async function syncStorageWithFirestore(): Promise<number> {
       }
     }
 
-    console.log(`Sync complete. Added ${addedCount} missing documents.`)
     return addedCount
   } catch (error) {
     console.error('Error syncing storage with firestore:', error)

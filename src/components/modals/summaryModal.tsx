@@ -6,9 +6,9 @@ import { getNotebookSources } from '../../lib/firestore/sources'
 import type { Source } from '../../types/source'
 import type { Summary } from '../../types/summary'
 import { Modal } from './Modal'
-import { ErrorMessage } from './ErrorMessage'
-import { MarkdownContent } from './MarkdownContent'
-import { AppLoader } from './AppLoader'
+import { ErrorMessage } from '../ui/ErrorMessage'
+import { MarkdownContent } from '../ui/MarkdownContent'
+import { AppLoader } from '../ui/AppLoader'
 
 interface SummaryModalProps {
   isOpen: boolean
@@ -34,7 +34,7 @@ export function SummaryModal({ isOpen, onClose, notebookId }: SummaryModalProps)
     try {
       setLoading(true)
       setError(null)
-      
+
       const [sourcesData, summariesData] = await Promise.all([
         getNotebookSources(notebookId),
         getNotebookSummaries(notebookId)
@@ -79,7 +79,7 @@ export function SummaryModal({ isOpen, onClose, notebookId }: SummaryModalProps)
   }
 
   const toggleSourceSelection = (sourceId: string) => {
-    setSelectedSourceIds(prev => 
+    setSelectedSourceIds(prev =>
       prev.includes(sourceId)
         ? prev.filter(id => id !== sourceId)
         : [...prev, sourceId]
@@ -192,11 +192,10 @@ export function SummaryModal({ isOpen, onClose, notebookId }: SummaryModalProps)
                   {sources.map(source => (
                     <label
                       key={source.id}
-                      className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                        selectedSourceIds.includes(source.id)
+                      className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${selectedSourceIds.includes(source.id)
                           ? 'bg-blue-600/20 border-blue-500'
                           : 'bg-gray-700 border-gray-600 hover:border-gray-500'
-                      }`}
+                        }`}
                     >
                       <input
                         type="checkbox"
@@ -207,8 +206,8 @@ export function SummaryModal({ isOpen, onClose, notebookId }: SummaryModalProps)
                       <div className="flex-1">
                         <p className="text-sm font-medium">{source.name}</p>
                         <p className="text-xs text-gray-400">
-                          {source.extractedText && source.extractedText !== 'Failed to extract text from PDF. Please try again.' ? 
-                            `${source.extractedText.length} characters` : 
+                          {source.extractedText && source.extractedText !== 'Failed to extract text from PDF. Please try again.' ?
+                            `${source.extractedText.length} characters` :
                             'No text extracted'}
                         </p>
                       </div>

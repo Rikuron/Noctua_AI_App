@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { BookOpen, Loader2, Trash2 } from 'lucide-react'
-import { Modal } from '../ui/Modal'
+import { Modal } from './Modal'
 
 interface NotebookSettingsModalProps {
   isOpen: boolean

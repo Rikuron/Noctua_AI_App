@@ -1,7 +1,7 @@
 import { Check, Download, X } from 'lucide-react'
 import { formatFileSize, formatDate } from '../../formatters'
 
-interface SourceCardProps {
+interface WorkspaceSourceCardProps {
   source: {
     id: string
     name: string
@@ -15,7 +15,7 @@ interface SourceCardProps {
   onDelete: () => void
 }
 
-export function SourceCard({ source, isActive, onToggle, onDelete }: SourceCardProps) {
+export function WorkspaceSourceCard({ source, isActive, onToggle, onDelete }: WorkspaceSourceCardProps) {
   return (
     <div className={`bg-gray-800 rounded-lg p-3 border transition-all duration-200 ${
       isActive 
@@ -44,10 +44,9 @@ export function SourceCard({ source, isActive, onToggle, onDelete }: SourceCardP
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-2 text-xs text-gray-400">
-              <span>{formatFileSize(source.size)}</span>
-              <span>•</span>
-              <span>{formatDate(source.uploadedAt)}</span>
+            <div className="flex flex-col items-baseline text-sm md:text-xs text-gray-400">
+              <span>Size: {formatFileSize(source.size)}</span>
+              <span>Uploaded: {formatDate(source.uploadedAt)}</span>
             </div>
           </div>
         </div>

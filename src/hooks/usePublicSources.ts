@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { collection, getDocs } from 'firebase/firestore'
 import { db } from '../firebase'
 
-interface PDFDocument {
+interface PublicSource {
   id: string
   name: string
   url: string
@@ -11,12 +11,12 @@ interface PDFDocument {
   type: string
 }
 
-export function usePDFs() {
-  const [pdfs, setPdfs] = useState<PDFDocument[]>([])
+export function usePublicSources() {
+  const [sources, setSources] = useState<PublicSource[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchPDFs = async () => {
+  const fetchPublicSources = async () => {
     try {
       setLoading(true)
       setError(null)
@@ -25,7 +25,7 @@ export function usePDFs() {
       if (!db) {
         console.warn('Firebase not initialized, using mock data')
         // Return mock data for testing
-        setPdfs([
+        setSources([
           {
             id: '1',
             name: 'Sample Document.pdf',
@@ -39,13 +39,13 @@ export function usePDFs() {
         return
       }
       
-      const pdfsRef = collection(db, 'pdfs')
-      const querySnapshot = await getDocs(pdfsRef)
+      const publicSourcesRef = collection(db, 'public-sources')
+      const querySnapshot = await getDocs(publicSourcesRef)
       
-      const pdfList: PDFDocument[] = []
+      const publicSourcesList: PublicSource[] = []
       querySnapshot.forEach((doc) => {
         const data = doc.data()
-        pdfList.push({
+        publicSourcesList.push({
           id: doc.id,
           name: data.name,
           url: data.url,
@@ -55,19 +55,19 @@ export function usePDFs() {
         })
       })
       
-      pdfList.sort((a, b) => b.uploadedAt.getTime() - a.uploadedAt.getTime())
-      setPdfs(pdfList)
+      publicSourcesList.sort((a, b) => b.uploadedAt.getTime() - a.uploadedAt.getTime())
+      setSources(publicSourcesList)
     } catch (err) {
-      setError('Failed to fetch PDFs')
-      console.error('Error fetching PDFs:', err)
+      setError('Failed to fetch public sources')
+      console.error('Error fetching public sources:', err)
     } finally {
       setLoading(false)
     }
   }
 
   useEffect(() => {
-    fetchPDFs()
+    fetchPublicSources()
   }, [])
 
-  return { pdfs, loading, error, refetch: fetchPDFs }
+  return { sources, loading, error, refetch: fetchPublicSources }
 }

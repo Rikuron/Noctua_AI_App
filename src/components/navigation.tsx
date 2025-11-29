@@ -13,7 +13,7 @@ export function Navigation({ currentPage }: NavigationProps) {
   return (
     <>
       {/* Main Header */}
-      <nav className="flex items-center justify-between px-4 py-4 bg-[#0f0f0f] border-b border-gray-800 md:px-6">
+      <nav className="sticky top-0 z-50 flex items-center justify-between px-4 py-4 bg-[#0f0f0f] border-b border-gray-800 md:px-6">
         {/* Left side - Logo and Mobile Menu Button */}
         <div className="flex items-center gap-4">
           {/* Mobile Menu Button */}

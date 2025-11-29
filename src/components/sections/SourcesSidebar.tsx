@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Plus, MessageCircle, FileUp, Globe } from 'lucide-react'
-import { SourceCard } from '../cards/SourceCard'
-import { MaterialRepositoryModal } from '../ui/MaterialRepositoryModal'
+import { WorkspaceSourceCard } from '../cards/WorkspaceSourceCard'
+import { MaterialRepositoryModal } from '../modals/MaterialRepositoryModal'
 import { AppLoader } from '../ui/AppLoader'
 
 interface SourcesSidebarProps {
@@ -47,13 +47,12 @@ export function SourcesSidebar({
 
   return (
     <>
-      <div className={`${
-        activeTab === 'sources' ? 'flex' : 'hidden'
-      } lg:flex w-full lg:w-80 border-r border-gray-700 flex-col bg-gray-900 min-h-0`}>
+      <div className={`${activeTab === 'sources' ? 'flex' : 'hidden'
+        } lg:flex w-full lg:w-80 border-r border-gray-700 flex-col bg-gray-900 min-h-0`}>
         <div className="px-4 pt-4">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-lg font-semibold">📁 Sources</h2>
-            <button 
+            <button
               onClick={onShowUploadModal}
               className="w-fit flex items-center gap-2 px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg hover:bg-gray-700 hover:cursor-pointer transition-colors text-sm"
             >
@@ -61,7 +60,7 @@ export function SourcesSidebar({
               Upload sources
             </button>
           </div>
-          
+
           {/* Active Sources Status */}
           <div className="flex items-center justify-between mt-4 px-2">
             <span className="text-sm text-gray-400">Active for chat</span>
@@ -76,11 +75,10 @@ export function SourcesSidebar({
               <button
                 key={filter}
                 onClick={() => setSourceFilter(filter)}
-                className={`flex-1 px-3 py-2 rounded-md text-xs font-medium transition-all ${
-                  sourceFilter === filter
+                className={`flex-1 px-3 py-2 rounded-md text-xs font-medium transition-all ${sourceFilter === filter
                     ? 'bg-blue-600 text-white'
                     : 'text-gray-400 hover:text-white hover:cursor-pointer'
-                }`}
+                  }`}
               >
                 {filter === 'all' ? 'All' : filter === 'uploaded' ? 'Uploaded' : 'Repo'}
               </button>
@@ -128,7 +126,7 @@ export function SourcesSidebar({
               ) : (
                 <div className="space-y-3">
                   {filteredChatbotSources.map(source => (
-                    <SourceCard
+                    <WorkspaceSourceCard
                       key={source.id}
                       source={source}
                       isActive={activeSourceIds.includes(source.id)}

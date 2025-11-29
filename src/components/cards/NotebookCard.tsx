@@ -3,7 +3,7 @@ import { Link } from '@tanstack/react-router'
 import { formatDate, formatDateRelative } from '../../formatters'
 import { useState } from 'react'
 import type { Notebook } from '../../types/notebook'
-import { NotebookSettingsModal } from '../ui/NotebookSettingsModal'
+import { NotebookSettingsModal } from '../modals/NotebookSettingsModal'
 
 interface NotebookCardProps {
   notebook: Notebook

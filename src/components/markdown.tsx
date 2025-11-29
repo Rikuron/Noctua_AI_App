@@ -53,24 +53,24 @@ export const markdownComponents: Components = {
   
   // Tables
   table: ({ node, ...props }) => (
-    <div className="overflow-x-auto my-4">
-      <table className="min-w-full border-2 border-gray-500" {...props} />
+    <div className="overflow-x-auto my-6 rounded-lg border border-gray-700">
+      <table className="min-w-full divide-y divide-gray-700" {...props} />
     </div>
   ),
   thead: ({ node, ...props }) => (
-    <thead className="bg-gray-600" {...props} />
+    <thead className="bg-gray-800" {...props} />
   ),
   tbody: ({ node, ...props }) => (
-    <tbody {...props} />
+    <tbody className="divide-y divide-gray-700 bg-gray-900/50" {...props} />
   ),
   tr: ({ node, ...props }) => (
-    <tr className="border-b-2 border-gray-500" {...props} />
+    <tr className="transition-colors hover:bg-gray-800/50" {...props} />
   ),
   th: ({ node, ...props }) => (
-    <th className="border-2 border-gray-500 px-4 py-2 text-left font-semibold text-white bg-gray-700" {...props} />
+    <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider" {...props} />
   ),
   td: ({ node, ...props }) => (
-    <td className="border-2 border-gray-500 px-4 py-2 text-gray-200" {...props} />
+    <td className="px-4 py-3 text-sm text-gray-300 whitespace-nowrap" {...props} />
   ),
 }
 
@@ -99,14 +99,14 @@ export const markdownComponentsCompact: Components = {
     <li className="text-gray-100" {...props} />
   ),
   table: ({ node, ...props }) => (
-    <div className="overflow-x-auto my-3">
-      <table className="min-w-full border-2 border-gray-500 text-sm" {...props} />
+    <div className="overflow-x-auto my-3 rounded border border-gray-700">
+      <table className="min-w-full divide-y divide-gray-700 text-xs" {...props} />
     </div>
   ),
   th: ({ node, ...props }) => (
-    <th className="border-2 border-gray-500 px-3 py-2 text-left font-semibold text-white bg-gray-700" {...props} />
+    <th className="px-3 py-2 text-left font-medium text-gray-300 bg-gray-800" {...props} />
   ),
   td: ({ node, ...props }) => (
-    <td className="border-2 border-gray-500 px-3 py-2 text-gray-100" {...props} />
+    <td className="px-3 py-2 text-gray-300" {...props} />
   ),
 }
