@@ -22,7 +22,7 @@ import {
 } from 'lucide-react'
 import { getAllUserSources, deleteSource, syncStorageWithFirestore } from '../lib/firestore/sources'
 import type { Source } from '../types/source'
-import { RefreshCw } from 'lucide-react'
+// import { RefreshCw } from 'lucide-react'
 
 export const Route = createFileRoute('/repository')({
   component: MaterialRepository,
@@ -41,7 +41,7 @@ function MaterialRepository() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<string | null>(null)
-  const [syncing, setSyncing] = useState(false)
+  // const [syncing, setSyncing] = useState(false)
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState<string | null>(null)
 
@@ -115,7 +115,17 @@ function MaterialRepository() {
 
     try {
       setDeleting(source.id)
-      await deleteSource(source.notebookId, source.id)
+
+      // Check if this is a public repository document
+      if (source.notebookId === 'public-repository' || source.notebookId === 'global-pdfs') {
+        // Delete from the global pdfs collection
+        const { deletePublicDocument } = await import('../lib/firestore/sources')
+        await deletePublicDocument(source.id)
+      } else {
+        // Delete from notebook sources
+        await deleteSource(source.notebookId, source.id)
+      }
+
       const userSources = await getAllUserSources(user.uid)
       setFirestoreSources(userSources)
     } catch (err) {
@@ -126,7 +136,7 @@ function MaterialRepository() {
     }
   }
 
-  const handleSync = async () => {
+  /* const handleSync = async () => {
     if (!user) return
     try {
       setSyncing(true)
@@ -144,7 +154,7 @@ function MaterialRepository() {
     } finally {
       setSyncing(false)
     }
-  }
+  } */
 
   const handleViewPdf = (source: Source) => {
     setViewingPdf(source)
@@ -215,7 +225,7 @@ function MaterialRepository() {
                 <Filter className="w-3 h-3" />
                 <span className="hidden sm:inline text-sm">Filter</span>
               </button>
-              <button
+              {/* <button
                 onClick={handleSync}
                 disabled={syncing}
                 className="flex items-center gap-1 px-2 py-2 bg-gray-800 border border-gray-600 rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50"
@@ -223,7 +233,7 @@ function MaterialRepository() {
               >
                 <RefreshCw className={`w-3 h-3 ${syncing ? 'animate-spin' : ''}`} />
                 <span className="hidden sm:inline text-sm">Sync</span>
-              </button>
+              </button> */}
             </div>
 
             <button

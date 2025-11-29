@@ -88,6 +88,30 @@ export async function deleteSource(notebookId: string, sourceId: string): Promis
   await deleteDoc(docRef)
 }
 
+// Function to delete a public document from the global pdfs collection
+export async function deletePublicDocument(documentId: string): Promise<void> {
+  // Delete the Firestore document and its corresponding storage file
+  const docRef = doc(db, 'pdfs', documentId)
+  // Get the document to retrieve the file name
+  const { getDoc } = await import('firebase/firestore')
+  const docSnap = await getDoc(docRef)
+  if (docSnap.exists()) {
+    const data = docSnap.data() as any
+    const fileName = data.name
+    if (fileName) {
+      const { deleteObject } = await import('firebase/storage')
+      const storageRef = ref(storage, `pdfs/${fileName}`)
+      try {
+        await deleteObject(storageRef)
+      } catch (err) {
+        console.error('Failed to delete storage file:', err)
+      }
+    }
+  }
+  // Finally delete the Firestore document
+  await deleteDoc(docRef)
+}
+
 // Function to get all sources by trying multiple approaches
 export async function getAllUserSources(userId: string): Promise<Source[]> {
   console.log('getAllUserSources called for user:', userId)
@@ -169,7 +193,7 @@ export async function getAllUserSources(userId: string): Promise<Source[]> {
 export async function syncStorageWithFirestore(): Promise<number> {
   try {
     const { listAll, ref, getDownloadURL, getMetadata } = await import('firebase/storage')
-    const { collection, getDocs, addDoc, query, where, Timestamp } = await import('firebase/firestore')
+    const { collection, getDocs, addDoc, Timestamp } = await import('firebase/firestore')
 
     console.log('Starting syncStorageWithFirestore...')
 
