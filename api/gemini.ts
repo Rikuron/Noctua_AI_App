@@ -25,7 +25,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Initialize genAI
     getGenAI()
 
-    const { action, question, sourceTexts, chatHistory, title } = req.body
+    const { action, question, sourceTexts, chatHistory, numCards, numQuestions, title } = req.body
 
     if (!action || !sourceTexts || !Array.isArray(sourceTexts)) return res.status(400).json({ error: 'Invalid request parameters' })
 
@@ -38,6 +38,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       case 'generatePresentation': {
         const presentation = await generatePresentation(sourceTexts, title)
         return res.status(200).json({ result: presentation })
+      }
+
+      case 'generateFlashcards': {
+        const flashcards = await generateFlashcards(sourceTexts, numCards)
+        return res.status(200).json({ result: flashcards })
+      }
+
+      case 'generateQuiz': {
+        const quiz = await generateQuiz(sourceTexts, numQuestions)
+        return res.status(200).json({ result: quiz })
       }
 
       case 'chatWithSources': {
@@ -143,6 +153,179 @@ Presentation (markdown format with --- separators between slides):`
   return {
     title: presentationTitle,
     content: content
+  }
+}
+
+async function generateFlashcards(sourceTexts: string[], numCards?: number): Promise<{ title: string; cards: Array<{ front: string; back: string }> }> {
+  const combinedText = sourceTexts.join('\n\n---\n\n')
+  const cardCount = numCards && numCards > 0 ? numCards : 20
+
+  const prompt = `You are an educational AI assistant. Create study flashcards from the following study materials.
+
+Generate exactly ${cardCount} flashcards covering the most important concepts, definitions, facts, and key information from the materials.
+
+IMPORTANT: You must respond with ONLY valid JSON in this exact format:
+{
+  "title": "Title for this flashcard deck",
+  "cards": [
+    {
+      "front": "Question or term on the front of the card",
+      "back": "Answer or definition on the back of the card"
+    }
+  ]
+}
+
+The front should be concise (one question, term, or concept). The back should provide a clear, educational answer or explanation.
+
+Study Materials:
+${combinedText}
+
+JSON Response:`
+
+  const response = await getGenAI().models.generateContent({
+    model: 'gemini-2.0-flash-exp',
+    contents: prompt,
+  })
+
+  const responseText = response.text ?? ''
+  
+  // Try to extract JSON from the response
+  let jsonText = responseText.trim()
+  
+  // Remove markdown code blocks if present
+  if (jsonText.startsWith('```')) {
+    const lines = jsonText.split('\n')
+    const startIndex = lines.findIndex(line => line.includes('{'))
+    const endIndex = lines.findLastIndex(line => line.includes('}'))
+    if (startIndex !== -1 && endIndex !== -1) {
+      jsonText = lines.slice(startIndex, endIndex + 1).join('\n')
+    }
+  }
+  
+  // Extract JSON object
+  const jsonMatch = jsonText.match(/\{[\s\S]*\}/)
+  if (jsonMatch) {
+    jsonText = jsonMatch[0]
+  }
+
+  try {
+    const parsed = JSON.parse(jsonText)
+    
+    // Validate structure
+    if (!parsed.cards || !Array.isArray(parsed.cards)) {
+      throw new Error('Invalid flashcard structure: missing cards array')
+    }
+    
+    // Ensure all cards have front and back
+    const validCards = parsed.cards.filter((card: any) => 
+      card && typeof card.front === 'string' && typeof card.back === 'string'
+    )
+    
+    if (validCards.length === 0) {
+      throw new Error('No valid flashcards generated')
+    }
+    
+    return {
+      title: parsed.title || 'Flashcard Deck',
+      cards: validCards
+    }
+  } catch (error) {
+    console.error('Failed to parse flashcard JSON:', error)
+    console.error('Response text:', responseText)
+    throw new Error('Failed to generate valid flashcard format. Please try again.')
+  }
+}
+
+async function generateQuiz(sourceTexts: string[], numQuestions?: number): Promise<{ title: string; questions: Array<{ question: string; options: string[]; correctAnswer: number; explanation?: string }> }> {
+  const combinedText = sourceTexts.join('\n\n---\n\n')
+  const questionCount = numQuestions && numQuestions > 0 ? numQuestions : 10
+
+  const prompt = `You are an educational AI assistant. Create a quiz from the following study materials.
+
+Generate exactly ${questionCount} multiple-choice questions covering the most important concepts, facts, and key information from the materials.
+
+IMPORTANT: You must respond with ONLY valid JSON in this exact format:
+{
+  "title": "Title for this quiz",
+  "questions": [
+    {
+      "question": "The question text",
+      "options": ["Option A", "Option B", "Option C", "Option D"],
+      "correctAnswer": 0,
+      "explanation": "Brief explanation of why this answer is correct (optional but recommended)"
+    }
+  ]
+}
+
+Requirements:
+- Each question must have exactly 4 options
+- correctAnswer is the 0-based index of the correct option (0 = first option, 1 = second option, etc.)
+- Questions should test understanding, not just memorization
+- Include explanations when possible to help students learn
+- Make questions progressively more challenging
+
+Study Materials:
+${combinedText}
+
+JSON Response:`
+
+  const response = await getGenAI().models.generateContent({
+    model: 'gemini-2.0-flash-exp',
+    contents: prompt,
+  })
+
+  const responseText = response.text ?? ''
+  
+  // Try to extract JSON from the response
+  let jsonText = responseText.trim()
+  
+  // Remove markdown code blocks if present
+  if (jsonText.startsWith('```')) {
+    const lines = jsonText.split('\n')
+    const startIndex = lines.findIndex(line => line.includes('{'))
+    const endIndex = lines.findLastIndex(line => line.includes('}'))
+    if (startIndex !== -1 && endIndex !== -1) {
+      jsonText = lines.slice(startIndex, endIndex + 1).join('\n')
+    }
+  }
+  
+  // Extract JSON object
+  const jsonMatch = jsonText.match(/\{[\s\S]*\}/)
+  if (jsonMatch) {
+    jsonText = jsonMatch[0]
+  }
+
+  try {
+    const parsed = JSON.parse(jsonText)
+    
+    // Validate structure
+    if (!parsed.questions || !Array.isArray(parsed.questions)) {
+      throw new Error('Invalid quiz structure: missing questions array')
+    }
+    
+    // Ensure all questions have required fields
+    const validQuestions = parsed.questions.filter((q: any) => 
+      q && 
+      typeof q.question === 'string' && 
+      Array.isArray(q.options) && 
+      q.options.length === 4 &&
+      typeof q.correctAnswer === 'number' &&
+      q.correctAnswer >= 0 &&
+      q.correctAnswer < 4
+    )
+    
+    if (validQuestions.length === 0) {
+      throw new Error('No valid quiz questions generated')
+    }
+    
+    return {
+      title: parsed.title || 'Quiz',
+      questions: validQuestions
+    }
+  } catch (error) {
+    console.error('Failed to parse quiz JSON:', error)
+    console.error('Response text:', responseText)
+    throw new Error('Failed to generate valid quiz format. Please try again.')
   }
 }
 

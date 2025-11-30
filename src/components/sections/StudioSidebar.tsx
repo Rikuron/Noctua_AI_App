@@ -5,9 +5,11 @@ interface StudioSidebarProps {
   activeTab: 'chat' | 'sources' | 'studio'
   onShowSummaryModal: () => void
   onShowPresentationModal: () => void
+  onShowFlashcardModal: () => void
+  onShowQuizModal: () => void
 }
 
-export function StudioSidebar({ activeTab, onShowSummaryModal, onShowPresentationModal }: StudioSidebarProps) {
+export function StudioSidebar({ activeTab, onShowSummaryModal, onShowPresentationModal, onShowFlashcardModal, onShowQuizModal }: StudioSidebarProps) {
   return (
     <div className={`${
       activeTab === 'studio' ? 'flex' : 'hidden'
@@ -40,12 +42,14 @@ export function StudioSidebar({ activeTab, onShowSummaryModal, onShowPresentatio
           icon={<StickyNote className="w-4 h-4" />}
           title="Flashcards"
           description="Generate study flashcards"
+          onClick={onShowFlashcardModal}
         />
         
         <StudioCard 
           icon={<HelpCircle className="w-4 h-4" />}
           title="Quiz"
           description="Create quizzes from your material"
+          onClick={onShowQuizModal}
         />
       </div>
 

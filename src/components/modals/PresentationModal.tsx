@@ -433,4 +433,3 @@ export function PresentationModal({ isOpen, onClose, notebookId }: PresentationM
     </Modal>
   )
 }
-

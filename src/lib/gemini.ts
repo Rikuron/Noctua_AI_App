@@ -22,6 +22,58 @@ export async function generateSummary(sourceTexts: string[]): Promise<string> {
   return data.result
 }
 
+// Function to Generate Flashcards from Sources
+export async function generateFlashcards(
+  sourceTexts: string[],
+  numCards?: number
+): Promise<{ title: string; cards: Array<{ front: string; back: string }> }> {
+  const response = await fetch(API_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      action: 'generateFlashcards',
+      sourceTexts,
+      numCards,
+    }),
+  })
+
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.error || 'Failed to generate flashcards')
+  }
+
+  const data = await response.json()
+  return data.result
+}
+
+// Function to Generate Quiz from Sources
+export async function generateQuiz(
+  sourceTexts: string[],
+  numQuestions?: number
+): Promise<{ title: string; questions: Array<{ question: string; options: string[]; correctAnswer: number; explanation?: string }> }> {
+  const response = await fetch(API_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      action: 'generateQuiz',
+      sourceTexts,
+      numQuestions,
+    }),
+  })
+
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.error || 'Failed to generate quiz')
+  }
+
+  const data = await response.json()
+  return data.result
+}
+
 // Function to Generate Presentation from Sources
 export async function generatePresentation(
   sourceTexts: string[],

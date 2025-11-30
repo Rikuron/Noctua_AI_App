@@ -4,6 +4,8 @@ import { useAuth } from '../components/authProvider'
 import { UploadSourcesModal } from '../components/modals/UploadSourcesModal'
 import { SummaryModal } from '../components/modals/SummaryModal'
 import { PresentationModal } from '../components/modals/PresentationModal'
+import { FlashcardModal } from '../components/modals/FlashcardModal'
+import { QuizModal } from '../components/modals/QuizModal'
 import { CustomScrollbarStyles } from '../components/CustomScrollbar'
 import { getNotebook } from '../lib/firestore/notebook'
 import type { Notebook } from '../types/notebook'
@@ -45,6 +47,8 @@ function NotebookDetail() {
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [showSummaryModal, setShowSummaryModal] = useState(false)
   const [showPresentationModal, setShowPresentationModal] = useState(false)
+  const [showFlashcardModal, setShowFlashcardModal] = useState(false)
+  const [showQuizModal, setShowQuizModal] = useState(false)
   const [sourceFilter, setSourceFilter] = useState<'all' | 'uploaded' | 'repository'>('all')
   const [activeTab, setActiveTab] = useState<'chat' | 'sources' | 'studio'>('chat')
   const [notebook, setNotebook] = useState<Notebook | null>(null)
@@ -193,6 +197,8 @@ function NotebookDetail() {
             activeTab={activeTab}
             onShowSummaryModal={() => setShowSummaryModal(true)}
             onShowPresentationModal={() => setShowPresentationModal(true)}
+            onShowFlashcardModal={() => setShowFlashcardModal(true)}
+            onShowQuizModal={() => setShowQuizModal(true)}
           />
         </div>
       </div>
@@ -216,6 +222,18 @@ function NotebookDetail() {
       <PresentationModal
         isOpen={showPresentationModal}
         onClose={() => setShowPresentationModal(false)}
+        notebookId={notebookId}
+      />
+
+      <FlashcardModal
+        isOpen={showFlashcardModal}
+        onClose={() => setShowFlashcardModal(false)}
+        notebookId={notebookId}
+      />
+
+      <QuizModal
+        isOpen={showQuizModal}
+        onClose={() => setShowQuizModal(false)}
         notebookId={notebookId}
       />
 
