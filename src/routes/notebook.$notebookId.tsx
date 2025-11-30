@@ -1,15 +1,20 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { useAuth } from '../components/authProvider'
-import { UploadSourcesModal } from '../components/modals/uploadSourcesModal'
-import { SummaryModal } from '../components/modals/summaryModal'
+import { UploadSourcesModal } from '../components/modals/UploadSourcesModal'
+import { SummaryModal } from '../components/modals/SummaryModal'
 import { CustomScrollbarStyles } from '../components/CustomScrollbar'
 import { getNotebook } from '../lib/firestore/notebook'
 import type { Notebook } from '../types/notebook'
 import { useNotebookSources } from '../hooks/useNotebookSources'
 import { useChatHistory } from '../hooks/useChatHistory'
-import { useGlobalPdfs } from '../hooks/useGlobalPdfs'
+import { usePublicSources } from '../hooks/usePublicSources'
+import { useNotebookActions } from '../hooks/useNotebookActions'
 import { SourcesSidebar } from '../components/sections/SourcesSidebar'
+import { DocumentDetailsModal } from '../components/modals/DocumentDetailsModal'
+import type { Source } from '../types/source'
+import { PDFViewer } from '../components/PDFViewer'
+import { MarkdownViewer } from '../components/MarkdownViewer'
 import { ChatArea } from '../components/sections/ChatArea'
 import { NotebookHeader } from '../components/sections/NotebookHeader'
 import { MobileTabs } from '../components/sections/MobileTabs'
@@ -25,26 +30,24 @@ function NotebookDetail() {
   const navigate = useNavigate()
   const { user } = useAuth()
 
-  // Custom hooks - replace all the manual fetching
-  const { sources: chatbotSources, refetch: refetchSources } = useNotebookSources(notebookId)
+  // Custom hooks
+  const { sources: chatbotSources, refetch: refetchSources, error: notebookSourcesError } = useNotebookSources(notebookId)
   const { messages: chatMessages, sending: chatLoading, sendMessage } = useChatHistory(notebookId)
-  const { pdfs: globalPdfs, loading: pdfsLoading, error: pdfsError } = useGlobalPdfs()
+  const { sources: publicSources, loading: publicSourcesLoading, error: publicSourcesError } = usePublicSources()
+
+  const { deleteSource, addPublicSource } = useNotebookActions(notebookId)
 
   // UI state only
-  const [activeSourceIds, setActiveSourceIds] = useState<string[]>([])
+  const [selectedSource, setSelectedSource] = useState<Source | null>(null)
+  const [viewingPdf, setViewingPdf] = useState<Source | null>(null)
+  const [viewingMarkdown, setViewingMarkdown] = useState<Source | null>(null)
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [showSummaryModal, setShowSummaryModal] = useState(false)
   const [sourceFilter, setSourceFilter] = useState<'all' | 'uploaded' | 'repository'>('all')
   const [activeTab, setActiveTab] = useState<'chat' | 'sources' | 'studio'>('chat')
   const [notebook, setNotebook] = useState<Notebook | null>(null)
   const [loading, setLoading] = useState(true)
-
-  // Auto-activate all sources when they load
-  useEffect(() => {
-    if (chatbotSources.length > 0) {
-      setActiveSourceIds(chatbotSources.map(s => s.id))
-    }
-  }, [chatbotSources])
+  const combinedError = notebookSourcesError || publicSourcesError
 
   useEffect(() => {
     async function loadNotebook() {
@@ -108,6 +111,34 @@ function NotebookDetail() {
     )
   }
 
+  const handleViewSource = (source: Source) => {
+    if (source.type === 'pdf') {
+      setViewingPdf(source)
+    } else if (source.type === 'md' || source.type === 'txt') {
+      setViewingMarkdown(source)
+    }
+  }
+
+  const handleDownload = async (source: Source) => {
+    try {
+      const response = await fetch(source.url)
+      if (!response.ok) throw new Error('Network response was not ok')
+
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = source.name
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error('Download failed:', error)
+      window.open(source.url, '_blank')
+    }
+  }
+
   return (
     <div className="flex h-screen flex-col bg-gray-900 text-white overflow-hidden">
       <CustomScrollbarStyles />
@@ -133,59 +164,16 @@ function NotebookDetail() {
         <SourcesSidebar
           activeTab={activeTab}
           chatbotSources={chatbotSources}
-          globalPdfs={globalPdfs}
-          pdfsLoading={pdfsLoading}
-          pdfsError={pdfsError}
-          activeSourceIds={activeSourceIds}
+          publicSources={publicSources}
+          publicSourcesLoading={publicSourcesLoading}
+          publicSourcesError={publicSourcesError}
           sourceFilter={sourceFilter}
           notebookId={notebookId}
           onShowUploadModal={() => setShowUploadModal(true)}
-          onToggleSource={(sourceId) => {
-            setActiveSourceIds(ids =>
-              ids.includes(sourceId) ? ids.filter(id => id !== sourceId) : [...ids, sourceId]
-            )
-          }}
-          onDeleteSource={async (sourceId) => {
-            try {
-              const { db } = await import('../firebase')
-              const { doc, deleteDoc } = await import('firebase/firestore')
-              await deleteDoc(doc(db, 'notebooks/' + notebookId + '/sources', sourceId))
-              await refetchSources()
-              setActiveSourceIds(activeSourceIds.filter(id => id !== sourceId))
-            } catch (err: any) {
-              alert('Failed to delete source: ' + (err?.message || String(err)))
-            }
-          }}
-          onAddGlobalPdfToWorkspace={async (pdf) => {
-            try {
-              const { db } = await import('../firebase')
-              const { collection: fsCollection, addDoc } = await import('firebase/firestore')
-              let extractedText = ''
-              try {
-                const response = await fetch(pdf.url)
-                const blob = await response.blob()
-                const file = new File([blob], pdf.fileName, { type: 'application/pdf' })
-                const { extractTextFromPDF } = await import('../lib/pdfExtractor')
-                extractedText = await extractTextFromPDF(file)
-              } catch (extractError) {
-                console.error('Failed to extract text:', extractError)
-                extractedText = 'Failed to extract text from PDF.'
-              }
-              const sourcesRef = fsCollection(db, 'notebooks/' + notebookId + '/sources')
-              await addDoc(sourcesRef, {
-                name: pdf.fileName,
-                url: pdf.url,
-                size: pdf.size,
-                uploadedAt: pdf.uploadedAt,
-                type: 'pdf',
-                extractedText,
-                fromRepository: true
-              })
-              await refetchSources()
-            } catch (err: any) {
-              alert('Failed to add PDF: ' + (err?.message || String(err)))
-            }
-          }}
+          onSelectSource={setSelectedSource}
+          onViewSource={handleViewSource}
+          onDeleteSource={deleteSource}
+          onAddPublicSourceToWorkspace={addPublicSource}
           onRefetchSources={refetchSources}
           setSourceFilter={setSourceFilter}
         />
@@ -195,7 +183,7 @@ function NotebookDetail() {
             activeTab={activeTab}
             chatMessages={chatMessages}
             chatLoading={chatLoading}
-            pdfsError={pdfsError}
+            publicSourcesError={combinedError}
             onSendMessage={sendMessage}
           />
 
@@ -220,6 +208,32 @@ function NotebookDetail() {
         isOpen={showSummaryModal}
         onClose={() => setShowSummaryModal(false)}
         notebookId={notebookId}
+      />
+
+      {viewingPdf && (
+        <PDFViewer 
+          pdfUrl={viewingPdf.url}
+          pdfName={viewingPdf.name}
+          onClose={() => setViewingPdf(null)}
+        />
+      )}
+
+      {viewingMarkdown && (
+        <MarkdownViewer
+          url={viewingMarkdown.url}
+          name={viewingMarkdown.name}
+          onClose={() => setViewingMarkdown(null)}
+        />
+      )}
+
+      <DocumentDetailsModal
+        source={selectedSource}
+        onClose={() => setSelectedSource(null)}
+        onDownload={handleDownload}
+        onDelete={(source) => {
+          deleteSource(source.id)
+          setSelectedSource(null)
+        }}
       />
     </div>
   )

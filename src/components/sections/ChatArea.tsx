@@ -9,7 +9,7 @@ interface ChatAreaProps {
   activeTab: 'chat' | 'sources' | 'studio'
   chatMessages: Array<{ role: 'user' | 'assistant'; text: string }>
   chatLoading: boolean
-  pdfsError: string | null
+  publicSourcesError: string | null
   onSendMessage: (message: string) => Promise<void>
 }
 
@@ -17,7 +17,7 @@ export function ChatArea({
   activeTab,
   chatMessages,
   chatLoading,
-  pdfsError,
+  publicSourcesError,
   onSendMessage
 }: ChatAreaProps) {
   const [chatInput, setChatInput] = useState('')
@@ -42,9 +42,9 @@ export function ChatArea({
       </div>
 
       {/* Error display */}
-      {pdfsError && (
+      {publicSourcesError && (
         <div className="p-4">
-          <ErrorMessage message={pdfsError} />
+          <ErrorMessage message={publicSourcesError} />
         </div>
       )}
       

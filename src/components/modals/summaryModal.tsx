@@ -98,7 +98,7 @@ export function SummaryModal({ isOpen, onClose, notebookId }: SummaryModalProps)
       size="lg"
     >
       {/* Content */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
+      <div className="flex-1 overflow-y-auto custom-scrollbar p-2 sm:p-6">
         {loading ? (
           <AppLoader size="sm" label="Loading summaries..." />
         ) : view === 'list' ? (
@@ -111,7 +111,8 @@ export function SummaryModal({ isOpen, onClose, notebookId }: SummaryModalProps)
                 className="flex items-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 hover:cursor-pointer text-white rounded-lg transition-colors text-sm"
               >
                 <Sparkles className="w-4 h-4" />
-                Generate New Summary
+                <span className="sm:hidden">New</span>
+                <span className="hidden sm:inline">Generate New Summary</span>
               </button>
             </div>
 
@@ -189,30 +190,47 @@ export function SummaryModal({ isOpen, onClose, notebookId }: SummaryModalProps)
             ) : (
               <>
                 <div className="space-y-2 mb-6 max-h-96 overflow-y-auto">
-                  {sources.map(source => (
-                    <label
-                      key={source.id}
-                      className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${selectedSourceIds.includes(source.id)
-                          ? 'bg-blue-600/20 border-blue-500'
-                          : 'bg-gray-700 border-gray-600 hover:border-gray-500'
-                        }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedSourceIds.includes(source.id)}
-                        onChange={() => toggleSourceSelection(source.id)}
-                        className="w-4 h-4"
-                      />
-                      <div className="flex-1">
-                        <p className="text-sm font-medium">{source.name}</p>
-                        <p className="text-xs text-gray-400">
-                          {source.extractedText && source.extractedText !== 'Failed to extract text from PDF. Please try again.' ?
-                            `${source.extractedText.length} characters` :
-                            'No text extracted'}
-                        </p>
-                      </div>
-                    </label>
-                  ))}
+                  {sources.map(source => {
+                    const isRepo = source.fromRepository
+                    const isSelected = selectedSourceIds.includes(source.id)
+
+                    let borderClass = 'border-gray-600 hover:border-gray-500'
+                    let bgClass = 'bg-gray-700'
+
+                    if (isSelected) {
+                      if (isRepo) {
+                        borderClass = 'border-green-500'
+                        bgClass = 'bg-green-600/20'
+                      } else {
+                        borderClass = 'border-blue-500'
+                        bgClass = 'bg-blue-600/20'
+                      }
+                    }
+
+                    return (
+                      <label
+                        key={source.id}
+                        className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${bgClass} ${borderClass}`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedSourceIds.includes(source.id)}
+                          onChange={() => toggleSourceSelection(source.id)}
+                          className={`w-4 h-4 ${isRepo ? 'accent-green-500' : 'accent-blue-600'}`}
+                        />
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-medium">{source.name}</p>
+                            {isRepo && (
+                              <span className="text-[10px] bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded-full border border-green-500/30">
+                                Repository
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </label>
+                    )
+                  })}
                 </div>
 
                 <div className="flex gap-3 mb-6">
@@ -233,7 +251,7 @@ export function SummaryModal({ isOpen, onClose, notebookId }: SummaryModalProps)
                 <button
                   onClick={handleGenerateSummary}
                   disabled={generating || selectedSourceIds.length === 0}
-                  className="w-full py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2 text-sm"
+                  className="w-full py-2 bg-blue-600 cursor-pointer hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2 text-sm"
                 >
                   {generating ? (
                     <>

@@ -75,7 +75,8 @@ export async function getNotebookSources(notebookId: string): Promise<Source[]> 
       size: data.size,
       uploadedAt: data.uploadedAt.toDate(),
       extractedText: data.extractedText,
-      type: data.type
+      type: data.type,
+      fromRepository: data.fromRepository
     })
   })
 

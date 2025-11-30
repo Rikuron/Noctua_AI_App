@@ -57,13 +57,13 @@ export function Modal({
   if (!isOpen) return null
 
   return (
-    <div 
+    <div
       className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
       onClick={onClose}
     >
       <CustomScrollbarStyles />
-      <div 
-        className={`bg-gray-800 rounded-2xl w-full ${sizeClasses[size]} border border-gray-600 max-h-[90vh] flex flex-col shadow-2xl ${className}`}
+      <div
+        className={`bg-gray-800 rounded-2xl w-full ${sizeClasses[size]} border border-gray-600 max-h-[95vh] flex flex-col shadow-2xl ${className}`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

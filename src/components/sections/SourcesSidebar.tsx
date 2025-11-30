@@ -7,32 +7,33 @@ import { AppLoader } from '../ui/AppLoader'
 interface SourcesSidebarProps {
   activeTab: 'chat' | 'sources' | 'studio'
   chatbotSources: any[]
-  globalPdfs: any[]
-  pdfsLoading: boolean
-  pdfsError: string | null
-  activeSourceIds: string[]
+  publicSources: any[]
+  publicSourcesLoading: boolean
+  publicSourcesError: string | null
   sourceFilter: 'all' | 'uploaded' | 'repository'
   notebookId: string
   onShowUploadModal: () => void
-  onToggleSource: (sourceId: string) => void
+  onSelectSource: (source: any) => void
+  onViewSource: (source: any) => void
   onDeleteSource: (sourceId: string) => void
-  onAddGlobalPdfToWorkspace: (pdf: any) => void
+  onAddPublicSourceToWorkspace: (source: any) => void
   onRefetchSources: () => void
   setSourceFilter: (filter: 'all' | 'uploaded' | 'repository') => void
+
 }
 
 export function SourcesSidebar({
   activeTab,
   chatbotSources,
-  globalPdfs,
-  pdfsLoading,
-  pdfsError,
-  activeSourceIds,
+  publicSources,
+  publicSourcesLoading,
+  publicSourcesError,
   sourceFilter,
   onShowUploadModal,
-  onToggleSource,
+  onSelectSource,
+  onViewSource,
   onDeleteSource,
-  onAddGlobalPdfToWorkspace,
+  onAddPublicSourceToWorkspace,
   setSourceFilter
 }: SourcesSidebarProps) {
   const [showMaterialModal, setShowMaterialModal] = useState(false)
@@ -49,7 +50,7 @@ export function SourcesSidebar({
     <>
       <div className={`${activeTab === 'sources' ? 'flex' : 'hidden'
         } lg:flex w-full lg:w-80 border-r border-gray-700 flex-col bg-gray-900 min-h-0`}>
-        <div className="px-4 pt-4">
+        <div className="p-4">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-lg font-semibold">📁 Sources</h2>
             <button
@@ -61,14 +62,6 @@ export function SourcesSidebar({
             </button>
           </div>
 
-          {/* Active Sources Status */}
-          <div className="flex items-center justify-between mt-4 px-2">
-            <span className="text-sm text-gray-400">Active for chat</span>
-            <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full">
-              {activeSourceIds.length} / {chatbotSources.length}
-            </span>
-          </div>
-
           {/* Source Filter - Mobile & Desktop */}
           <div className="flex gap-1 p-1 bg-gray-800 rounded-lg mt-4">
             {(['all', 'uploaded', 'repository'] as const).map((filter) => (
@@ -76,11 +69,11 @@ export function SourcesSidebar({
                 key={filter}
                 onClick={() => setSourceFilter(filter)}
                 className={`flex-1 px-3 py-2 rounded-md text-xs font-medium transition-all ${sourceFilter === filter
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-400 hover:text-white hover:cursor-pointer'
+                  ? 'bg-blue-600 text-white'
+                  : 'text-gray-400 hover:text-white hover:cursor-pointer'
                   }`}
               >
-                {filter === 'all' ? 'All' : filter === 'uploaded' ? 'Uploaded' : 'Repo'}
+                {filter === 'all' ? 'All' : filter === 'uploaded' ? 'Uploaded' : 'Public'}
               </button>
             ))}
           </div>
@@ -89,7 +82,7 @@ export function SourcesSidebar({
         {/* Sources List */}
         <div className="flex-1 overflow-y-auto min-h-0 pb-6">
           {/* Chatbot Sources */}
-          {pdfsLoading ? (
+          {publicSourcesLoading ? (
             <div className="flex h-full items-center justify-center">
               <AppLoader size="sm" label="Loading sources..." />
             </div>
@@ -129,8 +122,8 @@ export function SourcesSidebar({
                     <WorkspaceSourceCard
                       key={source.id}
                       source={source}
-                      isActive={activeSourceIds.includes(source.id)}
-                      onToggle={() => onToggleSource(source.id)}
+                      onSelect={() => onSelectSource(source)}
+                      onView={() => onViewSource(source)}
                       onDelete={() => onDeleteSource(source.id)}
                     />
                   ))}
@@ -154,11 +147,11 @@ export function SourcesSidebar({
       <MaterialRepositoryModal
         isOpen={showMaterialModal}
         onClose={() => setShowMaterialModal(false)}
-        globalPdfs={globalPdfs}
-        pdfsLoading={pdfsLoading}
-        pdfsError={pdfsError}
-        onAddPdfToWorkspace={(pdf) => {
-          onAddGlobalPdfToWorkspace(pdf)
+        sources={publicSources}
+        loading={publicSourcesLoading}
+        error={publicSourcesError}
+        onAddSourceToWorkspace={(source) => {
+          onAddPublicSourceToWorkspace(source)
           setShowMaterialModal(false)
         }}
       />

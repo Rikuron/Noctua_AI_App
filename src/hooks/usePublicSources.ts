@@ -9,6 +9,7 @@ interface PublicSource {
   size: number
   uploadedAt: Date
   type: string
+  uploadedBy: string
 }
 
 export function usePublicSources() {
@@ -32,7 +33,8 @@ export function usePublicSources() {
             url: '#',
             size: 1024000,
             uploadedAt: new Date(),
-            type: 'application/pdf'
+            type: 'application/pdf',
+            uploadedBy: 'Noctua AI'
           }
         ])
         setLoading(false)
@@ -51,7 +53,8 @@ export function usePublicSources() {
           url: data.url,
           size: data.size,
           uploadedAt: data.uploadedAt.toDate(),
-          type: data.type
+          type: data.type,
+          uploadedBy: data.uploadedBy
         })
       })
       

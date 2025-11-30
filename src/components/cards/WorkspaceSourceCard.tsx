@@ -1,4 +1,4 @@
-import { Check, Download, X } from 'lucide-react'
+import { Download, Eye, X } from 'lucide-react'
 import { formatFileSize, formatDate } from '../../formatters'
 
 interface WorkspaceSourceCardProps {
@@ -9,32 +9,27 @@ interface WorkspaceSourceCardProps {
     uploadedAt: Date
     url: string
     fromRepository?: boolean
+    type?: string
   }
-  isActive: boolean
-  onToggle: () => void
+  onSelect: () => void
+  onView: () => void
   onDelete: () => void
 }
 
-export function WorkspaceSourceCard({ source, isActive, onToggle, onDelete }: WorkspaceSourceCardProps) {
+export function WorkspaceSourceCard({ source, onSelect, onView, onDelete }: WorkspaceSourceCardProps) {
+  const isRepo = source.fromRepository
+  const canView = source.type !== 'docx'
+
+  const borderColor = isRepo ? 'border-green-500/50 hover:border-green-500' : 'border-blue-500/50 hover:border-blue-500'
+  const bgColor = isRepo ? 'bg-green-500/5' : 'bg-blue-500/5'
+
   return (
-    <div className={`bg-gray-800 rounded-lg p-3 border transition-all duration-200 ${
-      isActive 
-        ? 'border-blue-500 bg-blue-500/10' 
-        : 'border-gray-600 hover:border-gray-500'
-    }`}>
+    <div 
+      onClick={onSelect}
+      className={`rounded-lg p-3 border cursor-pointer transition-all duration-200 ${borderColor} ${bgColor}`}
+    >
       <div className="flex items-start justify-between">
         <div className="flex items-start gap-3 flex-1 min-w-0">
-          {/* Toggle Button instead of checkbox */}
-          <button
-            onClick={onToggle}
-            className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-all mt-0.5 shrink-0 ${
-              isActive
-                ? 'bg-blue-500 border-blue-500'
-                : 'bg-gray-700 border-gray-500 hover:border-gray-400'
-            }`}
-          >
-            {isActive && <Check className="w-2.5 h-2.5 text-white" />}
-          </button>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <span className="font-medium text-sm truncate">{source.name}</span>
@@ -51,16 +46,34 @@ export function WorkspaceSourceCard({ source, isActive, onToggle, onDelete }: Wo
           </div>
         </div>
         <div className="flex gap-1 ml-2">
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              onView()
+            }}
+            disabled={!canView}
+            className={`p-1 rounded transition-colors ${
+              canView 
+                ? 'text-gray-400 hover:text-blue-400 hover:bg-gray-700 cursor-pointer' 
+                : 'text-gray-600 cursor-not-allowed'
+            }`}
+            title={canView ? "View Document" : "Viewing not available for DOCX"}
+          >
+            <Eye className="w-3.5 h-3.5" />
+          </button>
+
           <a 
             href={source.url} 
             target="_blank" 
             rel="noopener noreferrer" 
+            onClick={(e) => e.stopPropagation()}
             className="p-1 text-gray-400 hover:text-white hover:bg-gray-700 hover:cursor-pointer rounded transition-colors"
           >
             <Download className="w-3.5 h-3.5" />
           </a>
           <button
-            onClick={() => {
+            onClick={(e) => {
+              e.stopPropagation()
               const confirmed = window.confirm(
                 'Remove this source from Workspace Sources? This will delete the PDF from the notebook.'
               )

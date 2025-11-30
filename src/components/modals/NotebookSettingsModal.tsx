@@ -83,14 +83,14 @@ export function NotebookSettingsModal({
       isOpen={isOpen}
       onClose={onClose}
       title="Notebook settings"
-      subtitle="Update the icon, name, description, or delete this notebook."
+      subtitle="Update the notebook's settings or delete it."
       icon={<BookOpen className="h-6 w-6 text-white" />}
       size="sm"
       headerClassName="gap-4"
-      iconWrapperClassName="w-17 h-12 rounded-xl bg-blue-500 flex items-center justify-center"
+      iconWrapperClassName="w-16 sm:w-12 h-12 rounded-xl bg-blue-500 flex items-center justify-center"
       titleWrapperClassName="space-y-1 text-base leading-tight"
     >
-      <form onSubmit={handleSubmit} className="space-y-6 p-6">
+      <form onSubmit={handleSubmit} className="space-y-6">
         <div className="flex flex-col gap-4">
           <div className="flex flex-row gap-4 items-end">
             <label className="basis-[33%] text-sm font-medium text-gray-300">
