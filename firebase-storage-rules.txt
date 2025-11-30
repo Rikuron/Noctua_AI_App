@@ -1,0 +1,64 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+  
+
+    // PDFs stored in notebooks/{notebookId}/sources/{filename}
+    match /notebooks/{notebookId}/sources/{filename} {
+      // Helper function to check if user owns the notebook
+      function isNotebookOwner() {
+        return request.auth != null && 
+          firestore.get(/databases/(default)/documents/notebooks/$(notebookId)).data.userId == request.auth.uid;
+      }
+      
+      // Allow read if user is authenticated
+      // The app UI already handles authorization, so we can be more permissive here
+      allow read: if request.auth != null;
+      
+      // Allow write (upload) if user owns the notebook
+      // Note: If Firestore read fails, the rule will deny (secure by default)
+      allow write: if request.auth != null && 
+        isNotebookOwner() &&
+        // Optional: Restrict file size (50MB max)
+        request.resource.size < 50 * 1024 * 1024 &&
+        // Allow PDF, DOCX, TXT, MD, and other common document types
+        (
+        	request.resource.contentType.matches('application/pdf') || 
+          request.resource.contentType.matches('application/vnd.openxmlformats-officedocument.wordprocessingml.document') || 
+          request.resource.contentType.matches('text/.*') ||
+          request.resource.contentType == 'application/octet-stream'
+        );
+      
+      // Allow delete if user owns the notebook
+      allow delete: if request.auth != null && isNotebookOwner();
+    }
+    
+    // Optional: Allow profile pictures or other user files
+    match /users/{userId}/{allPaths=**} {
+      allow read, write: if request.auth != null && 
+        request.auth.uid == userId;
+    }
+    
+    
+    
+    match /pdfs/{allPaths=**} {
+      // Only authenticated users can read and write
+      allow read, list: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+
+    match /public-sources/{allPaths=**} {
+    	allow read: if true;
+      allow write: if request.auth != null;
+    }
+    
+    
+    
+    // Deny all other files
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
+

@@ -22,6 +22,32 @@ export async function generateSummary(sourceTexts: string[]): Promise<string> {
   return data.result
 }
 
+// Function to Generate Presentation from Sources
+export async function generatePresentation(
+  sourceTexts: string[],
+  title?: string
+): Promise<{ title: string; content: string }> {
+  const response = await fetch(API_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      action: 'generatePresentation',
+      sourceTexts,
+      title,
+    }),
+  })
+
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.error || 'Failed to generate presentation')
+  }
+
+  const data = await response.json()
+  return data.result
+}
+
 // Function to Chat with Sources
 export async function chatWithSources(
   question: string,

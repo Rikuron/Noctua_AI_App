@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '../components/authProvider'
 import { UploadSourcesModal } from '../components/modals/UploadSourcesModal'
 import { SummaryModal } from '../components/modals/SummaryModal'
+import { PresentationModal } from '../components/modals/PresentationModal'
 import { CustomScrollbarStyles } from '../components/CustomScrollbar'
 import { getNotebook } from '../lib/firestore/notebook'
 import type { Notebook } from '../types/notebook'
@@ -43,6 +44,7 @@ function NotebookDetail() {
   const [viewingMarkdown, setViewingMarkdown] = useState<Source | null>(null)
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [showSummaryModal, setShowSummaryModal] = useState(false)
+  const [showPresentationModal, setShowPresentationModal] = useState(false)
   const [sourceFilter, setSourceFilter] = useState<'all' | 'uploaded' | 'repository'>('all')
   const [activeTab, setActiveTab] = useState<'chat' | 'sources' | 'studio'>('chat')
   const [notebook, setNotebook] = useState<Notebook | null>(null)
@@ -190,6 +192,7 @@ function NotebookDetail() {
           <StudioSidebar
             activeTab={activeTab}
             onShowSummaryModal={() => setShowSummaryModal(true)}
+            onShowPresentationModal={() => setShowPresentationModal(true)}
           />
         </div>
       </div>
@@ -207,6 +210,12 @@ function NotebookDetail() {
       <SummaryModal
         isOpen={showSummaryModal}
         onClose={() => setShowSummaryModal(false)}
+        notebookId={notebookId}
+      />
+
+      <PresentationModal
+        isOpen={showPresentationModal}
+        onClose={() => setShowPresentationModal(false)}
         notebookId={notebookId}
       />
 

@@ -10,3 +10,5 @@ count.txt
 .wrangler
 .vercel
 cors.json
+.vercel
+.env*.local

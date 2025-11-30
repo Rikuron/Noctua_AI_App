@@ -4,9 +4,10 @@ import { StudioCard } from '../cards/StudioCard'
 interface StudioSidebarProps {
   activeTab: 'chat' | 'sources' | 'studio'
   onShowSummaryModal: () => void
+  onShowPresentationModal: () => void
 }
 
-export function StudioSidebar({ activeTab, onShowSummaryModal }: StudioSidebarProps) {
+export function StudioSidebar({ activeTab, onShowSummaryModal, onShowPresentationModal }: StudioSidebarProps) {
   return (
     <div className={`${
       activeTab === 'studio' ? 'flex' : 'hidden'
@@ -32,6 +33,7 @@ export function StudioSidebar({ activeTab, onShowSummaryModal }: StudioSidebarPr
           icon={<BarChart3 className="w-4 h-4" />}
           title="Presentations"
           description="Create presentations from your content"
+          onClick={onShowPresentationModal}
         />
         
         <StudioCard 
