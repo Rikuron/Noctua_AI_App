@@ -5,6 +5,7 @@ import type { SourceInput } from '../../types/source'
 import { formatFileSize } from '../../formatters'
 import { Modal } from './Modal'
 import { ErrorMessage } from '../ui/ErrorMessage'
+import { useAuth } from '../authProvider'
 
 interface UploadSourcesModalProps {
   isOpen: boolean
@@ -19,6 +20,7 @@ export function UploadSourcesModal({ isOpen, onClose, onUpload, notebookId }: Up
   const [uploading, setUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState<{ [key: string]: 'pending' | 'uploading' | 'success' | 'error' }>({})
   const [error, setError] = useState<string | null>(null)
+  const { user } = useAuth()
 
   if (!isOpen) return null
 
@@ -80,6 +82,11 @@ export function UploadSourcesModal({ isOpen, onClose, onUpload, notebookId }: Up
       return
     }
 
+    if (!user) {
+      setError('You must be logged in to upload files')
+      return
+    }
+
     if (selectedFiles.length === 0) {
       setError('Please select at least one file to upload')
       return
@@ -109,7 +116,7 @@ export function UploadSourcesModal({ isOpen, onClose, onUpload, notebookId }: Up
           type: type as any
         }
 
-        const sourceId = await addSource(notebookId, sourceInput)
+        const sourceId = await addSource(notebookId, sourceInput, user.uid)
         uploadedSources.push({ id: sourceId, name: file.name })
 
         setUploadProgress(prev => ({ ...prev, [file.name]: 'success' }))

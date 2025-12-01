@@ -14,10 +14,15 @@ import { extractTextFromFile } from '../fileExtractor'
 // Function to add a new source to a notebook
 export async function addSource(
   notebookId: string,
-  input: SourceInput
+  input: SourceInput,
+  userId: string
 ): Promise<string> {
+  const safeName = input.file.name
+    .replace(/[^a-zA-Z0-9-_\.]/g, '_')
+    .replace(/_+/g, '_')
+
   // 1. Upload file to Firebase Storage
-  const storageRef = ref(storage, `notebooks/${notebookId}/sources/${input.file.name}`)
+  const storageRef = ref(storage, `notebooks/${notebookId}/sources/${safeName}`)
 
   // Helper to force correct MIME types
   const getMimeType = (name: string) => {
@@ -30,7 +35,12 @@ export async function addSource(
   }
 
   const metadata = {
-    contentType: getMimeType(input.file.name)
+    contentType: getMimeType(input.file.name),
+    customMetadata: {
+      userId: userId,
+      notebookId: notebookId,
+      originalName: input.file.name,
+    }
   }
 
   await uploadBytes(storageRef, input.file, metadata)
@@ -49,11 +59,13 @@ export async function addSource(
   const sourcesRef = collection(db, `notebooks/${notebookId}/sources`)
   const docRef = await addDoc(sourcesRef, {
     name: input.file.name,
+    storageName: safeName,
     url,
     size: input.file.size,
     uploadedAt: Timestamp.now(),
     extractedText: extractedText,
-    type: input.type
+    type: input.type,
+    userId: userId
   })
 
   return docRef.id
