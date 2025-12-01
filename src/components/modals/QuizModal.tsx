@@ -485,7 +485,6 @@ export function QuizModal({ isOpen, onClose, notebookId }: QuizModalProps) {
                   {currentQuiz.questions.map((question, index) => {
                     const selectedAnswer = selectedAnswers.get(index)
                     const isCorrect = selectedAnswer === question.correctAnswer
-                    const answered = selectedAnswer !== undefined
 
                     return (
                       <div
