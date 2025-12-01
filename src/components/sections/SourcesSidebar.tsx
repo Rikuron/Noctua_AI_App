@@ -9,6 +9,7 @@ interface SourcesSidebarProps {
   chatbotSources: any[]
   publicSources: any[]
   publicSourcesLoading: boolean
+  actionLoading?: boolean
   publicSourcesError: string | null
   sourceFilter: 'all' | 'uploaded' | 'repository'
   notebookId: string
@@ -27,6 +28,7 @@ export function SourcesSidebar({
   chatbotSources,
   publicSources,
   publicSourcesLoading,
+  actionLoading = false,
   publicSourcesError,
   sourceFilter,
   onShowUploadModal,
@@ -82,9 +84,9 @@ export function SourcesSidebar({
         {/* Sources List */}
         <div className="flex-1 overflow-y-auto min-h-0 pb-6">
           {/* Chatbot Sources */}
-          {publicSourcesLoading ? (
+          {publicSourcesLoading || actionLoading ? (
             <div className="flex h-full items-center justify-center">
-              <AppLoader size="sm" label="Loading sources..." />
+              <AppLoader size="sm" label={actionLoading ? 'Updating sources...' : 'Loading sources...'} />
             </div>
           ) : (
             <div className="p-4">

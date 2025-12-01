@@ -38,7 +38,7 @@ function NotebookDetail() {
   const { messages: chatMessages, sending: chatLoading, sendMessage } = useChatHistory(notebookId)
   const { sources: publicSources, loading: publicSourcesLoading, error: publicSourcesError } = usePublicSources()
 
-  const { deleteSource, addPublicSource } = useNotebookActions(notebookId)
+  const { deleteSource, addPublicSource, actionLoading } = useNotebookActions(notebookId, refetchSources)
 
   // UI state only
   const [selectedSource, setSelectedSource] = useState<Source | null>(null)
@@ -172,6 +172,7 @@ function NotebookDetail() {
           chatbotSources={chatbotSources}
           publicSources={publicSources}
           publicSourcesLoading={publicSourcesLoading}
+          actionLoading={actionLoading}
           publicSourcesError={publicSourcesError}
           sourceFilter={sourceFilter}
           notebookId={notebookId}
