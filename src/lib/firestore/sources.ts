@@ -121,12 +121,7 @@ export async function deletePublicDocument(documentId: string): Promise<void> {
         const newStorageRef = ref(storage, `public-sources/${fileName}`)
         await deleteObject(newStorageRef)
       } catch (Err) {
-        try {
-          const oldStorageRef = ref(storage, `pdfs/${fileName}`)
-          await deleteObject(oldStorageRef)
-        } catch (oldErr) {
-          console.error('Failed to delete storage file:', oldErr)
-        }
+        console.error('Failed to delete storage file:', Err)
       }
     }
   }
@@ -157,7 +152,7 @@ export async function getAllUserSources(userId: string): Promise<Source[]> {
 
         allSources.push({
           id: doc.id,
-          notebookId: data.notebookId || 'global-pdfs',
+          notebookId: data.notebookId || 'public-repository',
           name: data.name || data.fileName || data.title || doc.id,
           url,
           size: data.size || data.fileSize || 0,

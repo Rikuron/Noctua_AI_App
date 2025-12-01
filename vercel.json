@@ -1,7 +1,6 @@
 {
   "framework": "vite",
   "rewrites": [
-    { "source": "/admin", "destination": "/index.html" },
     { "source": "/repository", "destination": "/index.html" },
     { "source": "/sign-in", "destination": "/index.html" },
     { "source": "/notebook/(.*)", "destination": "/index.html" }

@@ -56,7 +56,7 @@ function MaterialRepository() {
   const handleDeleteSource = async (source: Source) => {
     if (!user) return
     
-    const isPublic = source.notebookId === 'public-repository' || source.notebookId === 'global-pdfs'
+    const isPublic = source.notebookId === 'public-repository'
     const message = isPublic
       ? 'This will remove this document from the public database. This action cannot be undone. Are you sure?'
       : 'Are you sure you want to delete this document?'
@@ -67,7 +67,7 @@ function MaterialRepository() {
       setDeleting(source.id)
 
       // Check if this is a public repository document
-      if (source.notebookId === 'public-repository' || source.notebookId === 'global-pdfs') {
+      if (source.notebookId === 'public-repository') {
         // Delete from the global pdfs collection
         const { deletePublicDocument } = await import('../lib/firestore/sources')
         await deletePublicDocument(source.id)
@@ -91,7 +91,7 @@ function MaterialRepository() {
 
   // Filter sources by active tab
   const tabSources = sources.filter(source => {
-    const isPublic = source.notebookId === 'public-repository' || source.notebookId === 'global-pdfs'
+    const isPublic = source.notebookId === 'public-repository'
     return activeTab === 'public-sources' ? isPublic : !isPublic
   })
 
@@ -112,7 +112,7 @@ function MaterialRepository() {
     <ProtectedRoute>
       <div className="min-h-screen bg-[#1a1a1a] text-white flex flex-col">
         <Navigation currentPage="repository" />
-        <main className="flex-1 flex flex-col max-w-7xl mx-auto w-full px-3 sm:px-6 py-4 sm:py-8">
+        <main className="flex-1 flex flex-col max-w-7xl mx-auto w-full px-6 py-4 sm:py-8">
           {/* Header Section */}
           <div className="mb-4 sm:mb-8">
             <h1 className="text-xl sm:text-3xl font-bold mb-1 sm:mb-2">Material Repository</h1>
