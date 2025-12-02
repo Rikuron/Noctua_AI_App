@@ -1,6 +1,11 @@
 // Utility Functions for formatting data
 
-// Format file size in a human readable way
+/**
+ * Formats a byte count into a human-readable string (e.g., "1.5 MB").
+ * 
+ * @param bytes - The size in bytes
+ * @returns Formatted string with appropriate unit
+ */
 export function formatFileSize(bytes: number): string {
   if (bytes === 0) return '0 Bytes'
   const k = 1024
@@ -9,7 +14,12 @@ export function formatFileSize(bytes: number): string {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
 }
 
-// Format date to readable string
+/**
+ * Formats a date object into a readable string (e.g., "Jan 1, 2024, 12:00 PM").
+ * 
+ * @param date - The date to format
+ * @returns Formatted date string
+ */
 export function formatDate(date: Date): string {
   return new Intl.DateTimeFormat('en-US', {
     month: 'short',
@@ -20,7 +30,12 @@ export function formatDate(date: Date): string {
   }).format(date)
 }
 
-// Format Date with Time
+/**
+ * Formats a date object into a readable string with year first (e.g., "2024, Jan 1, 12:00 PM").
+ * 
+ * @param date - The date to format
+ * @returns Formatted date string
+ */
 export function formatDateTime(date: Date): string {
   return new Intl.DateTimeFormat('en-US', {
     year: 'numeric',
@@ -31,7 +46,12 @@ export function formatDateTime(date: Date): string {
   }).format(date)
 }
 
-// Format date to relative time
+/**
+ * Formats a date relative to the current time (e.g., "2 days ago", "Today").
+ * 
+ * @param date - The date to format
+ * @returns Relative time string
+ */
 export function formatDateRelative(date: Date): string {
   const now = new Date()
   const diffTime = Math.abs(now.getTime() - date.getTime())
@@ -45,7 +65,12 @@ export function formatDateRelative(date: Date): string {
   return `${Math.floor(diffDays / 365)} years ago`
 }
 
-// Format date for mobile
+/**
+ * Formats a date for mobile display (shorter format).
+ * 
+ * @param date - The date to format
+ * @returns Short formatted date string
+ */
 export function formatDateMobile(date: Date): string {
   const now = new Date()
   const diffTime = Math.abs(now.getTime() - date.getTime())

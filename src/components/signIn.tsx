@@ -54,7 +54,7 @@ export function SignIn() {
                 alt="Logo" 
                 className="w-32 h-32 mx-auto mb-6 opacity-90"
               />
-              <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+              <h1 className="text-4xl font-bold mb-4 bg-linear-to-r from-primary to-secondary bg-clip-text text-transparent">
                 Welcome to Noctua AI
               </h1>
               <p className="text-gray-400 text-lg">
@@ -86,7 +86,7 @@ export function SignIn() {
               alt="Logo" 
               className="w-20 h-20 mx-auto mb-4 opacity-90"
             />
-            <h1 className="text-2xl font-bold mb-2 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+            <h1 className="text-2xl font-bold mb-2 bg-linear-to-r from-primary to-secondary bg-clip-text text-transparent">
               Noctua AI
             </h1>
             <p className="text-gray-400 text-sm">
@@ -144,7 +144,7 @@ export function SignIn() {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full py-3 cursor-pointer bg-gradient-to-r from-primary to-secondary rounded-lg font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed text-base"
+                  className="w-full py-3 cursor-pointer bg-linear-to-r from-primary to-secondary rounded-lg font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed text-base"
                 >
                   {isSubmitting ? 'Loading...' : isSignUp ? 'Create Account' : 'Sign In'}
                 </button>

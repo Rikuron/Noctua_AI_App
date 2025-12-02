@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { HelpCircle, Clock, FileText, Loader2, ChevronLeft, ChevronRight, CheckCircle2, XCircle, Trophy } from 'lucide-react'
-import { formatDateTime } from '../../formatters'
+import { formatDateTime } from '../../utils/formatters'
 import { generateAndSaveQuiz, getNotebookQuizzes } from '../../lib/firestore/quizzes'
 import { getNotebookSources } from '../../lib/firestore/sources'
 import type { Source } from '../../types/source'
@@ -469,7 +469,7 @@ export function QuizModal({ isOpen, onClose, notebookId }: QuizModalProps) {
             {currentQuiz && score && (
               <div className="flex-1 flex flex-col">
                 {/* Score Display */}
-                <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg p-6 mb-6 border border-blue-500">
+                <div className="bg-linear-to-br from-blue-600 to-blue-700 rounded-lg p-6 mb-6 border border-blue-500">
                   <div className="text-center">
                     <Trophy className="w-12 h-12 text-yellow-300 mx-auto mb-3" />
                     <h3 className="text-2xl font-bold text-white mb-2">Quiz Complete!</h3>
@@ -495,9 +495,9 @@ export function QuizModal({ isOpen, onClose, notebookId }: QuizModalProps) {
                       >
                         <div className="flex items-start gap-3 mb-3">
                           {isCorrect ? (
-                            <CheckCircle2 className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
+                            <CheckCircle2 className="w-5 h-5 text-green-400 shrink-0 mt-0.5" />
                           ) : (
-                            <XCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+                            <XCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
                           )}
                           <div className="flex-1">
                             <div className="text-sm text-gray-400 mb-1">Question {index + 1}</div>

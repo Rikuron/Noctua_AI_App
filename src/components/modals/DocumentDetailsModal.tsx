@@ -1,5 +1,5 @@
 import { FileText, Download, Trash2 } from "lucide-react"
-import { formatFileSize, formatDate } from "../../formatters"
+import { formatFileSize, formatDate } from "../../utils/formatters"
 import type { Source } from "../../types/source"
 import { Modal } from "./Modal"
 import { useAuth } from "../authProvider"

@@ -16,6 +16,13 @@ interface UseChatHistoryResult {
   sendMessage: (message: string) => Promise<void>
 }
 
+/**
+ * Manages the chat history and interactions for a specific notebook.
+ * Handles loading history, sending messages, and storing them in Firestore.
+ * 
+ * @param notebookId - The ID of the notebook to chat within
+ * @returns Object containing messages, loading states, error, and sendMessage function
+ */
 export function useChatHistory(notebookId: string): UseChatHistoryResult {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [loading, setLoading] = useState(false)

@@ -1,5 +1,5 @@
 import { FileText, HardDrive } from "lucide-react"
-import { formatFileSize } from "../../formatters"
+import { formatFileSize } from "../../utils/formatters"
 import type { Source } from "../../types/source"
 
 interface StatisticsProps {

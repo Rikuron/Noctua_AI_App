@@ -1,6 +1,6 @@
 import { BookOpen, FileText, Clock, MoreVertical, Loader2 } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
-import { formatDate, formatDateRelative } from '../../formatters'
+import { formatDate, formatDateRelative } from '../../utils/formatters'
 import { useState } from 'react'
 import type { Notebook } from '../../types/notebook'
 import { NotebookSettingsModal } from '../modals/NotebookSettingsModal'

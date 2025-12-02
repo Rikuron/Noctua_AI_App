@@ -11,7 +11,15 @@ import { db, storage } from '../../firebase'
 import type { Source, SourceInput } from '../../types/source'
 import { extractTextFromFile } from '../fileExtractor'
 
-// Function to add a new source to a notebook
+/**
+ * Adds a new source file to a notebook.
+ * Uploads the file to Firebase Storage, extracts its text, and saves metadata to Firestore.
+ * 
+ * @param notebookId - The ID of the notebook
+ * @param input - The source input containing the file and type
+ * @param userId - The ID of the user uploading the file
+ * @returns Promise resolving to the new source ID
+ */
 export async function addSource(
   notebookId: string,
   input: SourceInput,
@@ -71,7 +79,12 @@ export async function addSource(
   return docRef.id
 }
 
-// Function to fetch all sources for a notebook
+/**
+ * Retrieves all sources for a specific notebook.
+ * 
+ * @param notebookId - The ID of the notebook
+ * @returns Promise resolving to an array of Source objects
+ */
 export async function getNotebookSources(notebookId: string): Promise<Source[]> {
   const sourcesRef = collection(db, `notebooks/${notebookId}/sources`)
   const querySnapshot = await getDocs(sourcesRef)
@@ -95,13 +108,24 @@ export async function getNotebookSources(notebookId: string): Promise<Source[]> 
   return sources
 }
 
-// Function to delete a source
+/**
+ * Deletes a source from a notebook.
+ * Note: This currently only deletes the Firestore document, not the file in Storage.
+ * 
+ * @param notebookId - The ID of the notebook
+ * @param sourceId - The ID of the source to delete
+ */
 export async function deleteSource(notebookId: string, sourceId: string): Promise<void> {
   const docRef = doc(db, `notebooks/${notebookId}/sources`, sourceId)
   await deleteDoc(docRef)
 }
 
-// Function to delete a public document from the global pdfs collection
+/**
+ * Deletes a public document from the global repository.
+ * Deletes both the Firestore document and the file in Firebase Storage.
+ * 
+ * @param documentId - The ID of the public document to delete
+ */
 export async function deletePublicDocument(documentId: string): Promise<void> {
   // Delete the Firestore document and its corresponding storage file
   const docRef = doc(db, 'public-sources', documentId)
@@ -130,7 +154,13 @@ export async function deletePublicDocument(documentId: string): Promise<void> {
   await deleteDoc(docRef)
 }
 
-// Function to get all sources by trying multiple approaches
+/**
+ * Retrieves all sources accessible to a user, including their own notebook sources
+ * and public sources from the repository. Prevents duplicates.
+ * 
+ * @param userId - The ID of the user
+ * @returns Promise resolving to a combined array of Source objects
+ */
 export async function getAllUserSources(userId: string): Promise<Source[]> {
   try {
     const allSources: Source[] = []
@@ -199,7 +229,12 @@ export async function getAllUserSources(userId: string): Promise<Source[]> {
   }
 }
 
-// Function to sync Storage files with Firestore
+/**
+ * Syncs files from 'public-sources' in Firebase Storage to the Firestore collection.
+ * Adds missing files to Firestore if they exist in Storage but not in the database.
+ * 
+ * @returns Promise resolving to the number of new files added to Firestore
+ */
 export async function syncStorageWithFirestore(): Promise<number> {
   try {
     const { listAll, ref, getDownloadURL, getMetadata } = await import('firebase/storage')

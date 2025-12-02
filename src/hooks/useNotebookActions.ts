@@ -3,6 +3,14 @@ import { db } from '../firebase'
 import { doc, deleteDoc, collection, addDoc } from 'firebase/firestore'
 import { extractTextFromFile } from '../lib/fileExtractor'
 
+/**
+ * Provides actions for managing notebook resources, such as deleting sources
+ * and adding public sources to a notebook.
+ * 
+ * @param notebookId - The ID of the target notebook
+ * @param onActionComplete - Optional callback to run after an action completes
+ * @returns Object containing deleteSource, addPublicSource, and actionLoading state
+ */
 export function useNotebookActions(notebookId: string, onActionComplete?: () => void) {
   const [actionLoading, setActionLoading] = useState(false)
 

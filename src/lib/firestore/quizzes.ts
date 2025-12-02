@@ -11,7 +11,15 @@ import type { Quiz } from '../../types/quiz'
 import { generateQuiz } from '../gemini'
 import { getNotebookSources } from './sources'
 
-// Function to generate a quiz for a notebook
+/**
+ * Generates a quiz from notebook sources using AI and saves it to Firestore.
+ * 
+ * @param notebookId - The ID of the notebook
+ * @param selectedSourceIds - Optional list of source IDs to use
+ * @param numQuestions - Optional number of questions to generate
+ * @returns Promise resolving to the new quiz ID
+ * @throws Error if no sources are found or no text can be extracted
+ */
 export async function generateAndSaveQuiz(
   notebookId: string,
   selectedSourceIds?: string[],
@@ -52,7 +60,12 @@ export async function generateAndSaveQuiz(
   return docRef.id
 }
 
-// Function to fetch all quizzes for a notebook
+/**
+ * Retrieves all quizzes for a notebook, ordered by generation date.
+ * 
+ * @param notebookId - The ID of the notebook
+ * @returns Promise resolving to an array of Quiz objects
+ */
 export async function getNotebookQuizzes(notebookId: string): Promise<Quiz[]> {
   const quizzesRef = collection(db, `notebooks/${notebookId}/quizzes`)
   const q = query(quizzesRef, orderBy('generatedAt', 'desc'))

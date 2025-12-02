@@ -1,6 +1,11 @@
 const API_ENDPOINT = '/api/gemini'
 
-// Function to Generate Summary of Source PDF 
+/**
+ * Requests a summary of the provided source texts from the API.
+ * 
+ * @param sourceTexts - Array of strings to summarize
+ * @returns Promise resolving to the summary string
+ */
 export async function generateSummary(sourceTexts: string[]): Promise<string> {
   const response = await fetch(API_ENDPOINT, {
     method: 'POST',
@@ -22,7 +27,13 @@ export async function generateSummary(sourceTexts: string[]): Promise<string> {
   return data.result
 }
 
-// Function to Generate Flashcards from Sources
+/**
+ * Requests the generation of flashcards from the API.
+ * 
+ * @param sourceTexts - Array of source content strings
+ * @param numCards - Optional number of cards to generate
+ * @returns Promise resolving to the flashcard deck object
+ */
 export async function generateFlashcards(
   sourceTexts: string[],
   numCards?: number
@@ -48,7 +59,13 @@ export async function generateFlashcards(
   return data.result
 }
 
-// Function to Generate Quiz from Sources
+/**
+ * Requests the generation of a quiz from the API.
+ * 
+ * @param sourceTexts - Array of source content strings
+ * @param numQuestions - Optional number of questions to generate
+ * @returns Promise resolving to the quiz object
+ */
 export async function generateQuiz(
   sourceTexts: string[],
   numQuestions?: number
@@ -74,7 +91,13 @@ export async function generateQuiz(
   return data.result
 }
 
-// Function to Generate Presentation from Sources
+/**
+ * Requests the generation of a presentation from the API.
+ * 
+ * @param sourceTexts - Array of source content strings
+ * @param title - Optional title for the presentation
+ * @returns Promise resolving to the presentation object
+ */
 export async function generatePresentation(
   sourceTexts: string[],
   title?: string
@@ -100,7 +123,14 @@ export async function generatePresentation(
   return data.result
 }
 
-// Function to Chat with Sources
+/**
+ * Sends a user question to the API to chat with the source materials.
+ * 
+ * @param question - The user's question
+ * @param sourceTexts - Array of source content strings
+ * @param chatHistory - Optional history of the conversation
+ * @returns Promise resolving to the AI's answer
+ */
 export async function chatWithSources(
   question: string,
   sourceTexts: string[],
@@ -128,7 +158,15 @@ export async function chatWithSources(
   return data.result
 }
 
-// Function to Stream Chat Response
+/**
+ * Initiates a streaming chat response from the API.
+ * Handles the Server-Sent Events (SSE) stream and parses chunks.
+ * 
+ * @param question - The user's question
+ * @param sourceTexts - Array of source content strings
+ * @param onChunk - Callback function called for each text chunk received
+ * @returns Promise that resolves when the stream is complete
+ */
 export async function streamChatResponse(
   question: string,
   sourceTexts: string[],

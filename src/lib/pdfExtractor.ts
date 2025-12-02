@@ -2,7 +2,14 @@ import * as pdfjsLib from 'pdfjs-dist'
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs'
 
-// Function to Extract Text from PDF
+/**
+ * Extracts text content from a PDF file using pdfjs-dist.
+ * Iterates through all pages and concatenates the text.
+ * 
+ * @param file - The PDF file object
+ * @returns Promise resolving to the full extracted text
+ * @throws Error if extraction fails
+ */
 export async function extractTextFromPDF(file: File): Promise<string> {
   try {
     const arrayBuffer = await file.arrayBuffer()

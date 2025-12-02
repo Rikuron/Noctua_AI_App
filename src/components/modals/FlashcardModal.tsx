@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { StickyNote, Clock, FileText, Loader2, ChevronLeft, ChevronRight, RotateCcw, RotateCw } from 'lucide-react'
-import { formatDateTime } from '../../formatters'
+import { StickyNote, Clock, FileText, Loader2, ChevronLeft, ChevronRight, RotateCcw, RotateCw, Copy, FileCode, FileImage } from 'lucide-react'
+import { formatDateTime } from '../../utils/formatters'
 import { generateAndSaveFlashcards, getNotebookFlashcards } from '../../lib/firestore/flashcards'
 import { getNotebookSources } from '../../lib/firestore/sources'
 import type { Source } from '../../types/source'
@@ -9,6 +9,8 @@ import { Modal } from './Modal'
 import { ErrorMessage } from '../ui/ErrorMessage'
 import { MarkdownContent } from '../ui/MarkdownContent'
 import { AppLoader } from '../ui/AppLoader'
+import { downloadUtils } from '../../utils/download'
+import removeMarkdown from 'remove-markdown'
 
 interface FlashcardModalProps {
   isOpen: boolean
@@ -23,7 +25,9 @@ export function FlashcardModal({ isOpen, onClose, notebookId }: FlashcardModalPr
   const [currentFlashcard, setCurrentFlashcard] = useState<Flashcard | null>(null)
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
+  const [downloadingFormat, setDownloadingFormat] = useState<'txt' | 'md' | 'pdf' | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [view, setView] = useState<'list' | 'generate' | 'study'>('list')
   const [currentCardIndex, setCurrentCardIndex] = useState(0)
   const [isFlipped, setIsFlipped] = useState(false)
@@ -38,6 +42,7 @@ export function FlashcardModal({ isOpen, onClose, notebookId }: FlashcardModalPr
     try {
       setLoading(true)
       setError(null)
+      setSuccessMessage(null)
 
       const [sourcesData, flashcardsData] = await Promise.all([
         getNotebookSources(notebookId),
@@ -69,6 +74,7 @@ export function FlashcardModal({ isOpen, onClose, notebookId }: FlashcardModalPr
     try {
       setGenerating(true)
       setError(null)
+      setSuccessMessage(null)
       const flashcardId = await generateAndSaveFlashcards(notebookId, selectedSourceIds, numCards)
 
       // Reload flashcards to get the new deck
@@ -83,6 +89,7 @@ export function FlashcardModal({ isOpen, onClose, notebookId }: FlashcardModalPr
         setIsFlipped(false)
         setStudiedCards(new Set())
         setView('study')
+        setSuccessMessage('Flashcards generated successfully!')
       }
     } catch (err: any) {
       console.error('Error generating flashcards: ', err)
@@ -117,6 +124,93 @@ export function FlashcardModal({ isOpen, onClose, notebookId }: FlashcardModalPr
     setIsFlipped(!isFlipped)
     if (!isFlipped) {
       setStudiedCards(prev => new Set([...prev, currentCardIndex]))
+    }
+  }
+
+  // Function to format flashcard content for download
+  const formatFlashcardsForDownload = (flashcard: Flashcard): string => {
+    let formattedContent = `# ${flashcard.title}\n\n`
+    formattedContent += `Generated: ${formatDateTime(flashcard.generatedAt)}\n`
+    if (flashcard.sourceNames && flashcard.sourceNames.length > 0) {
+      formattedContent += `Sources: ${flashcard.sourceNames.join(', ')}\n`
+    }
+    formattedContent += `\n---\n\n`
+    
+    flashcard.cards.forEach((card, index) => {
+      formattedContent += `## Card ${index + 1}\n\n`
+      formattedContent += `**Q:** ${card.front}\n\n`
+      formattedContent += `**A:** ${card.back}\n\n`
+      formattedContent += `---\n\n`
+    })
+    
+    return formattedContent
+  }
+
+  const handleDownload = async (format: 'txt' | 'md' | 'pdf') => {
+    if (!currentFlashcard) return
+    
+    try {
+      setDownloadingFormat(format)
+      setError(null)
+      setSuccessMessage(null)
+      
+      const filename = `flashcards-${currentFlashcard.id.slice(0, 8)}-${Date.now()}`
+      const sourceNames = currentFlashcard.sourceNames || []
+      const generatedAt = currentFlashcard.generatedAt
+      const flashcardContent = formatFlashcardsForDownload(currentFlashcard)
+      
+      switch (format) {
+        case 'txt':
+          const plainText = removeMarkdown(flashcardContent, {
+            stripListLeaders: true,
+            listUnicodeChar: '•',
+            gfm: true,
+            useImgAltText: true,
+          })
+          downloadUtils.txt(plainText, filename)
+          setSuccessMessage('TXT file downloaded successfully!')
+          break
+        case 'md':
+          downloadUtils.md(flashcardContent, filename)
+          setSuccessMessage('Markdown file downloaded successfully!')
+          break
+        case 'pdf':
+          await downloadUtils.pdf(
+            flashcardContent, 
+            filename,
+            sourceNames,
+            generatedAt,
+            currentFlashcard.title
+          )
+          setSuccessMessage('PDF downloaded successfully!')
+          break
+      }
+    } catch (err: any) {
+      console.error(`Error downloading ${format}:`, err)
+      setError(`Failed to download ${format.toUpperCase()}: ${err.message}`)
+    } finally {
+      setDownloadingFormat(null)
+    }
+  }
+
+  const handleCopyToClipboard = async () => {
+    if (!currentFlashcard) return
+    
+    try {
+      const flashcardContent = formatFlashcardsForDownload(currentFlashcard)
+      // Convert markdown to plain text before copying
+      const plainText = removeMarkdown(flashcardContent, {
+        stripListLeaders: true,
+        listUnicodeChar: '•',
+        gfm: true,
+        useImgAltText: true,
+      })
+      
+      await navigator.clipboard.writeText(plainText)
+      setSuccessMessage('Flashcards copied to clipboard!')
+    } catch (err) {
+      console.error('Error copying to clipboard:', err)
+      setError('Failed to copy to clipboard')
     }
   }
 
@@ -172,6 +266,11 @@ export function FlashcardModal({ isOpen, onClose, notebookId }: FlashcardModalPr
             </div>
 
             {error && <ErrorMessage message={error} />}
+            {successMessage && (
+              <div className="mb-4 p-3 bg-green-900/30 border border-green-800 text-green-400 rounded-lg text-sm">
+                {successMessage}
+              </div>
+            )}
 
             {flashcards.length === 0 ? (
               <div className="text-center py-12">
@@ -197,7 +296,7 @@ export function FlashcardModal({ isOpen, onClose, notebookId }: FlashcardModalPr
                       setStudiedCards(new Set())
                       setView('study')
                     }}
-                    className="bg-gray-700 p-4 rounded-lg border border-gray-600 hover:border-gray-500 cursor-pointer transition-colors"
+                    className="bg-gray-700 p-4 rounded-lg border border-gray-600 hover:border-gray-500 hover:bg-gray-650 cursor-pointer transition-all duration-200 group"
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
@@ -215,6 +314,7 @@ export function FlashcardModal({ isOpen, onClose, notebookId }: FlashcardModalPr
                           <span>• {flashcard.cards.length} cards</span>
                         </div>
                       </div>
+                      <StickyNote className="w-4 h-4 text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                     </div>
                   </div>
                 ))}
@@ -226,7 +326,7 @@ export function FlashcardModal({ isOpen, onClose, notebookId }: FlashcardModalPr
           <div>
             <button
               onClick={() => setView('list')}
-              className="mb-4 text-blue-400 hover:text-blue-300 hover:cursor-pointer text-sm"
+              className="mb-4 text-blue-400 hover:text-blue-300 hover:cursor-pointer text-sm flex items-center gap-1"
             >
               ← Back to flashcard decks
             </button>
@@ -234,6 +334,11 @@ export function FlashcardModal({ isOpen, onClose, notebookId }: FlashcardModalPr
             <h3 className="text-lg font-medium mb-4">Generate New Flashcard Deck</h3>
 
             {error && <ErrorMessage message={error} />}
+            {successMessage && (
+              <div className="mb-4 p-3 bg-green-900/30 border border-green-800 text-green-400 rounded-lg text-sm">
+                {successMessage}
+              </div>
+            )}
 
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -350,22 +455,100 @@ export function FlashcardModal({ isOpen, onClose, notebookId }: FlashcardModalPr
                 setStudiedCards(new Set())
                 setView('list')
               }}
-              className="mb-4 text-blue-400 hover:text-blue-300 hover:cursor-pointer text-sm"
+              className="mb-4 text-blue-400 hover:text-blue-300 hover:cursor-pointer text-sm flex items-center gap-1"
             >
               ← Back to flashcard decks
             </button>
 
+            {error && <ErrorMessage message={error} />}
+            {successMessage && (
+              <div className="mb-4 p-3 bg-green-900/30 border border-green-800 text-green-400 rounded-lg text-sm">
+                {successMessage}
+              </div>
+            )}
+
             {currentFlashcard && currentCard && (
               <div className="flex-1 flex flex-col">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <h3 className="text-xl font-semibold mb-2">{currentFlashcard.title}</h3>
-                    <div className="flex items-center gap-4 text-sm text-gray-400">
-                      <div className="flex items-center gap-2">
+                {/* Header with metadata and download buttons */}
+                <div className="bg-linear-to-r from-gray-800 to-gray-900 rounded-lg p-5 mb-6 border border-gray-700">
+                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                    <div className="flex-1">
+                      <h3 className="text-xl font-semibold mb-2">{currentFlashcard.title}</h3>
+                      <div className="flex items-center gap-2 text-sm text-gray-400 mb-3">
+                        <Clock className="w-4 h-4" />
+                        <span>{formatDateTime(currentFlashcard.generatedAt)}</span>
+                        <span className="mx-2">•</span>
                         <FileText className="w-4 h-4" />
-                        <span>{currentFlashcard.sourceIds.length} source(s) used</span>
+                        <span>{currentFlashcard.sourceIds.length} source{currentFlashcard.sourceIds.length !== 1 ? 's' : ''} used</span>
                       </div>
-                      <span>• {studiedCards.size} of {totalCards} studied</span>
+                      
+                      {currentFlashcard.sourceNames && currentFlashcard.sourceNames.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mb-3">
+                          {currentFlashcard.sourceNames.map((name, index) => (
+                            <span 
+                              key={index} 
+                              className="px-2 py-1 bg-gray-700 text-gray-300 text-xs rounded-md border border-gray-600"
+                            >
+                              {name}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Download Buttons */}
+                    <div className="flex flex-wrap gap-2 lg:flex-nowrap">
+                      <button
+                        onClick={handleCopyToClipboard}
+                        disabled={downloadingFormat !== null}
+                        className="flex items-center gap-2 px-3 py-2 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:cursor-not-allowed text-white rounded-lg transition-colors text-sm"
+                        title="Copy to clipboard"
+                      >
+                        <Copy className="w-4 h-4" />
+                        <span className="hidden sm:inline">Copy</span>
+                      </button>
+                      
+                      <button
+                        onClick={() => handleDownload('txt')}
+                        disabled={downloadingFormat !== null}
+                        className="flex items-center gap-2 px-3 py-2 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:cursor-not-allowed text-white rounded-lg transition-colors text-sm"
+                        title="Download as TXT"
+                      >
+                        {downloadingFormat === 'txt' ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <FileText className="w-4 h-4" />
+                        )}
+                        <span className="hidden sm:inline">TXT</span>
+                      </button>
+                      
+                      <button
+                        onClick={() => handleDownload('md')}
+                        disabled={downloadingFormat !== null}
+                        className="flex items-center gap-2 px-3 py-2 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:cursor-not-allowed text-white rounded-lg transition-colors text-sm"
+                        title="Download as Markdown"
+                      >
+                        {downloadingFormat === 'md' ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <FileCode className="w-4 h-4" />
+                        )}
+                        <span className="hidden sm:inline">MD</span>
+                      </button>
+                      
+                  <button
+                        onClick={() => handleDownload('pdf')}
+                        disabled={downloadingFormat !== null}
+                        className="flex items-center gap-2 px-3 py-2 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:cursor-not-allowed text-white rounded-lg transition-colors text-sm"
+                        title="Download as PDF"
+                      >
+                        {downloadingFormat === 'pdf' ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <FileImage className="w-4 h-4" />
+                        )}
+                        <span className="hidden sm:inline">PDF</span>
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -378,7 +561,9 @@ export function FlashcardModal({ isOpen, onClose, notebookId }: FlashcardModalPr
                       style={{ width: `${progress}%` }}
                     />
                   </div>
-                  <div className="text-xs text-gray-400 mt-1 text-center">{progress}% complete</div>
+                  <div className="text-xs text-gray-400 mt-1 text-center">
+                    {progress}% complete • {studiedCards.size} of {totalCards} studied
+                  </div>
                 </div>
 
                 {/* Card Navigation */}
@@ -420,11 +605,11 @@ export function FlashcardModal({ isOpen, onClose, notebookId }: FlashcardModalPr
                     >
                       {/* Front of Card */}
                       <div
-                        className="absolute inset-0 backface-hidden bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg p-6 border border-blue-500 shadow-lg flex items-center justify-center"
+                        className="absolute inset-0 backface-hidden bg-linear-to-br from-blue-600 to-blue-700 rounded-lg p-6 border border-blue-500 shadow-lg flex items-center justify-center"
                         style={{ backfaceVisibility: 'hidden' }}
                       >
                         <div className="text-center">
-                          <div className="text-blue-200 text-sm mb-2 font-medium">FRONT</div>
+                          <div className="text-blue-200 text-sm mb-2 font-medium">QUESTION</div>
                           <div className="text-white text-lg font-medium">
                             <MarkdownContent content={currentCard.front} />
                           </div>
@@ -433,14 +618,14 @@ export function FlashcardModal({ isOpen, onClose, notebookId }: FlashcardModalPr
 
                       {/* Back of Card */}
                       <div
-                        className="absolute inset-0 backface-hidden bg-gradient-to-br from-green-600 to-green-700 rounded-lg p-6 border border-green-500 shadow-lg flex items-center justify-center rotate-y-180"
+                        className="absolute inset-0 backface-hidden bg-linear-to-br from-green-600 to-green-700 rounded-lg p-6 border border-green-500 shadow-lg flex items-center justify-center rotate-y-180"
                         style={{
                           backfaceVisibility: 'hidden',
                           transform: 'rotateY(180deg)',
                         }}
                       >
                         <div className="text-center">
-                          <div className="text-green-200 text-sm mb-2 font-medium">BACK</div>
+                          <div className="text-green-200 text-sm mb-2 font-medium">ANSWER</div>
                           <div className="text-white text-lg">
                             <MarkdownContent content={currentCard.back} />
                           </div>
@@ -459,12 +644,12 @@ export function FlashcardModal({ isOpen, onClose, notebookId }: FlashcardModalPr
                     {isFlipped ? (
                       <>
                         <RotateCcw className="w-4 h-4" />
-                        Show Front
+                        Show Question
                       </>
                     ) : (
                       <>
                         <RotateCw className="w-4 h-4" />
-                        Flip Card
+                        Show Answer
                       </>
                     )}
                   </button>
@@ -481,4 +666,3 @@ export function FlashcardModal({ isOpen, onClose, notebookId }: FlashcardModalPr
     </Modal>
   )
 }
-

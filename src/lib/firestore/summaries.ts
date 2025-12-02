@@ -11,7 +11,14 @@ import type { Summary } from '../../types/summary'
 import { generateSummary } from '../gemini'
 import { getNotebookSources } from './sources'
 
-// Function to generate a summary for a notebook
+/**
+ * Generates a summary from notebook sources using AI and saves it to Firestore.
+ * 
+ * @param notebookId - The ID of the notebook
+ * @param selectedSourceIds - Optional list of source IDs to use
+ * @returns Promise resolving to the new summary ID
+ * @throws Error if no sources are found or no text can be extracted
+ */
 export async function generateAndSaveSummary(
   notebookId: string,
   selectedSourceIds?: string[]
@@ -50,7 +57,12 @@ export async function generateAndSaveSummary(
   return docRef.id
 }
 
-// Function to fetch all summaries for a notebook
+/**
+ * Retrieves all summaries for a notebook, ordered by generation date.
+ * 
+ * @param notebookId - The ID of the notebook
+ * @returns Promise resolving to an array of Summary objects
+ */
 export async function getNotebookSummaries(notebookId: string): Promise<Summary[]> {
   const summariesRef = collection(db, `notebooks/${notebookId}/summaries`)
   const q = query(summariesRef, orderBy('generatedAt', 'desc'))
