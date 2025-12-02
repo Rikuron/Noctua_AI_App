@@ -4,6 +4,8 @@
   <img src="public/logo512.png" alt="Noctua AI Logo" width="200"/>
   
   <p><strong>An intelligent AI-powered study companion for MSU-IIT students</strong></p>
+
+  <p>Live Demo: <a href="https://noctua-ai-app.vercel.app">https://noctua-ai-app.vercel.app</a></p>
   
   <p>
     <a href="#features">Features</a> •
@@ -27,14 +29,19 @@
 ### 🤖 **AI-Powered Learning**
 - **Intelligent Chat**: Ask questions about your uploaded documents with context-aware responses
 - **Auto-Summarization**: Generate comprehensive summaries of your study materials
+- **Smart Flashcards**: Generate study flashcards from your materials
+- **Interactive Quizzes**: Test your knowledge with AI-generated quizzes
+- **Instant Presentations**: Create educational slide decks in seconds
 - **Gemini Integration**: Powered by Google's Gemini 2.0 Flash model for fast, accurate answers
 - **Chat History**: Persistent conversation history with markdown support
 
-### 📄 **Advanced PDF Management**
-- **Material Repository**: Centralized hub for all your PDF documents
+### 📄 **Advanced Document Management**
+- **Multi-Format Support**: Support for PDF, DOCX, TXT, and Markdown files
+- **Material Repository**: Centralized hub for all your study documents
 - **Built-in PDF Viewer**: View documents directly in the browser
-- **Text Extraction**: Automatic text extraction from PDFs for AI processing
-- **Batch Upload**: Drag-and-drop multiple PDFs at once
+- **Text Extraction**: Automatic text extraction for AI processing
+- **Flexible Exports**: Download content as PDF, Markdown, or Text
+- **Batch Upload**: Drag-and-drop multiple files at once
 - **Smart Metadata**: Track file size, upload dates, and source organization
 
 ### 🔐 **Secure & Personalized**
@@ -250,11 +257,18 @@ noctua-ai-app/
 │   ├── lib/
 │   │   ├── firestore/         # Firestore operations
 │   │   │   ├── chats.ts
+│   │   │   ├── flashcards.ts
 │   │   │   ├── notebook.ts
+│   │   │   ├── presentations.ts
+│   │   │   ├── quizzes.ts
 │   │   │   ├── sources.ts
 │   │   │   └── summaries.ts
 │   │   ├── gemini.ts          # Gemini AI client
+│   │   ├── fileExtractor.ts   # Universal file text extraction
 │   │   └── pdfExtractor.ts    # PDF text extraction
+│   ├── utils/                 # Utility functions
+│   │   ├── download.ts        # File download helpers
+│   │   └── formatters.ts      # Data formatting helpers
 │   ├── routes/                # TanStack Router routes
 │   │   ├── __root.tsx         # Root layout
 │   │   ├── index.tsx          # Workspaces homepage
@@ -264,7 +278,10 @@ noctua-ai-app/
 │   │   └── sign-in.tsx        # Authentication
 │   ├── types/                 # TypeScript definitions
 │   │   ├── chat.ts
+│   │   ├── flashcard.ts
 │   │   ├── notebook.ts
+│   │   ├── presentation.ts
+│   │   ├── quiz.ts
 │   │   ├── source.ts
 │   │   └── summary.ts
 │   ├── firebase.ts            # Firebase initialization

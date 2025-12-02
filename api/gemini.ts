@@ -3,6 +3,14 @@ import { GoogleGenAI } from '@google/genai'
 
 let genAI: GoogleGenAI | null = null
 
+/**
+ * Initializes and returns the GoogleGenAI instance.
+ * Singleton pattern to ensure only one instance is created.
+ * 
+ * @throws {Error} If GEMINI_API_KEY is not set in environment variables 
+ *                 OR if it could not be detected
+ * @returns {GoogleGenAI} The initialized GoogleGenAI instance
+ */
 function getGenAI(): GoogleGenAI {
   if (!genAI) {
     const apiKey = process.env.GEMINI_API_KEY
@@ -15,6 +23,21 @@ function getGenAI(): GoogleGenAI {
   return genAI
 }
 
+/**
+ * Main API Handler for Gemini integration.
+ * Routes requests to specific generation functions based on the 'action' parameter.
+ * 
+ * Supported actions:
+ * - generateSummary: Summarizes source texts
+ * - generatePresentation: Creates markdown slides
+ * - generateFlashcards: Creates study flashcards
+ * - generateQuiz: Creates multiple-choice questions
+ * - chatWithSources: Q&A with context
+ * - streamChatResponse: Streaming Q&A
+ * 
+ * @param req - Vercel request object
+ * @param res - Vercel response object
+ */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Only allow POST requests
   if (req.method !== 'POST') {
@@ -93,6 +116,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 }
 
+/**
+ * Generates a summary of the given source texts.
+ * 
+ * @param sourceTexts - Array of source texts to summarize
+ * @returns A Promise that resolves to the generated summary
+ */
 async function generateSummary(sourceTexts: string[]): Promise<string> {
   const combinedText = sourceTexts.join('\n\n---\n\n')
 
@@ -111,6 +140,13 @@ Summary:`
   return response.text ?? ''
 }
 
+/**
+ * Generates a markdown-formatted presentation from the given source texts.
+ * 
+ * @param sourceTexts - Array of source texts to generate presentation from
+ * @param title - Optional title for the presentation
+ * @returns A Promise that resolves to an object containing the generated presentation title and content
+ */
 async function generatePresentation(sourceTexts: string[], title?: string): Promise<{ title: string; content: string }> {
   const combinedText = sourceTexts.join('\n\n---\n\n')
 
@@ -156,6 +192,13 @@ Presentation (markdown format with --- separators between slides):`
   }
 }
 
+/**
+ * Generates study flashcards in a structured JSON format.
+ * 
+ * @param sourceTexts - Array of source content strings
+ * @param numCards - Number of flashcards to generate (default: 20)
+ * @returns Promise resolving to a structured flashcard deck object
+ */
 async function generateFlashcards(sourceTexts: string[], numCards?: number): Promise<{ title: string; cards: Array<{ front: string; back: string }> }> {
   const combinedText = sourceTexts.join('\n\n---\n\n')
   const cardCount = numCards && numCards > 0 ? numCards : 20
@@ -236,6 +279,13 @@ JSON Response:`
   }
 }
 
+/**
+ * Generates a multiple-choice quiz in a structured JSON format.
+ * 
+ * @param sourceTexts - Array of source content strings
+ * @param numQuestions - Number of questions to generate (default: 10)
+ * @returns Promise resolving to a structured quiz object
+ */
 async function generateQuiz(sourceTexts: string[], numQuestions?: number): Promise<{ title: string; questions: Array<{ question: string; options: string[]; correctAnswer: number; explanation?: string }> }> {
   const combinedText = sourceTexts.join('\n\n---\n\n')
   const questionCount = numQuestions && numQuestions > 0 ? numQuestions : 10
@@ -329,6 +379,14 @@ JSON Response:`
   }
 }
 
+/**
+ * Handles a chat interaction with the source materials.
+ * 
+ * @param question - The user's question
+ * @param sourceTexts - Array of source content strings
+ * @param chatHistory - Previous conversation history
+ * @returns Promise resolving to the AI's response
+ */
 async function chatWithSources(
   question: string,
   sourceTexts: string[],
@@ -358,6 +416,13 @@ Answer:`
   return response.text ?? ''
 }
 
+/**
+ * Streams a chat response for real-time feedback.
+ * 
+ * @param question - The user's question
+ * @param sourceTexts - Array of source content strings
+ * @param onChunk - Callback function executed for each streamed text chunk
+ */
 async function streamChatResponse(
   question: string,
   sourceTexts: string[],

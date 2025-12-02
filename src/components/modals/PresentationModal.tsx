@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Presentation as PresentationIcon, Clock, FileText, Loader2, ChevronLeft, ChevronRight, Play, Pause } from 'lucide-react'
-import { formatDateTime } from '../../formatters'
+import { formatDateTime } from '../../utils/formatters'
 import { generateAndSavePresentation, getNotebookPresentations } from '../../lib/firestore/presentations'
 import { getNotebookSources } from '../../lib/firestore/sources'
 import type { Source } from '../../types/source'

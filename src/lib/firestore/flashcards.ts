@@ -11,7 +11,15 @@ import type { Flashcard } from '../../types/flashcard'
 import { generateFlashcards } from '../gemini'
 import { getNotebookSources } from './sources'
 
-// Function to generate flashcards for a notebook
+/**
+ * Generates flashcards from notebook sources using AI and saves them to Firestore.
+ * 
+ * @param notebookId - The ID of the notebook
+ * @param selectedSourceIds - Optional list of source IDs to use (uses all if empty)
+ * @param numCards - Optional number of cards to generate
+ * @returns Promise resolving to the new flashcard deck ID
+ * @throws Error if no sources are found or no text can be extracted
+ */
 export async function generateAndSaveFlashcards(
   notebookId: string,
   selectedSourceIds?: string[],
@@ -52,7 +60,12 @@ export async function generateAndSaveFlashcards(
   return docRef.id
 }
 
-// Function to fetch all flashcards for a notebook
+/**
+ * Retrieves all flashcard decks for a notebook, ordered by generation date.
+ * 
+ * @param notebookId - The ID of the notebook
+ * @returns Promise resolving to an array of Flashcard objects
+ */
 export async function getNotebookFlashcards(notebookId: string): Promise<Flashcard[]> {
   const flashcardsRef = collection(db, `notebooks/${notebookId}/flashcards`)
   const q = query(flashcardsRef, orderBy('generatedAt', 'desc'))

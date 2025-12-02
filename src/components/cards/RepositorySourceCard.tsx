@@ -1,6 +1,6 @@
 import { FileText, Eye, Download, Trash2, File, FileCode, FileType } from "lucide-react"
 import type { Source } from "../../types/source"
-import { formatFileSize, formatDate } from "../../formatters"
+import { formatFileSize, formatDate } from "../../utils/formatters"
 
 interface RepositorySourceCardProps {
   source: Source

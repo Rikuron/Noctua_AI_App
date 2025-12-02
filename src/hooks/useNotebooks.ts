@@ -3,6 +3,14 @@ import { getUserNotebooks, deleteNotebook as deleteNotebookFirestore } from '../
 import { getNotebookSources } from '../lib/firestore/sources'
 import type { Notebook } from '../types/notebook'
 
+/**
+ * Manages the list of notebooks for a specific user.
+ * Handles fetching, filtering empty untitled notebooks, and deleting notebooks.
+ * Also fetches the count of sources for each notebook.
+ * 
+ * @param userId - The ID of the user to fetch notebooks for
+ * @returns Object containing notebooks list, source counts, loading/error states, and actions
+ */
 export function useNotebooks(userId: string | undefined) {
   const [notebooks, setNotebooks] = useState<Notebook[]>([])
   const [sourceCounts, setSourceCounts] = useState<Record<string, number>>({})

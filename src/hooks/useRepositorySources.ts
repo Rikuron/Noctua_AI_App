@@ -3,6 +3,13 @@ import { getAllUserSources } from '../lib/firestore/sources'
 import { usePublicSources } from './usePublicSources'
 import type { Source } from '../types/source'
 
+/**
+ * Combines user-specific sources and public sources into a single list for the repository view.
+ * Ensures no duplicates based on URL.
+ * 
+ * @param user - The current user object
+ * @returns Object containing the combined sources list, loading state, error, and refetch function
+ */
 export function useRepositorySources(user: any) {
   const [firestoreSources, setFirestoreSources] = useState<Source[]>([])
   const [loading, setLoading] = useState(true)

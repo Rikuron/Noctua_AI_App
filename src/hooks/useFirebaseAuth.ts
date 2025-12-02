@@ -10,6 +10,13 @@ import {
 } from 'firebase/auth'
 import { auth } from '../firebase'
 
+/**
+ * Provides access to Firebase Authentication state and methods.
+ * Handles sign-in, sign-up, Google auth, and sign-out.
+ * Enforces the @g.msuiit.edu.ph email domain restriction.
+ * 
+ * @returns Object containing user object, loading state, error, and auth methods
+ */
 export function useFirebaseAuth() {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)

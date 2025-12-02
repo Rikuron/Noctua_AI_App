@@ -1,5 +1,5 @@
 import { Download, Eye, X } from 'lucide-react'
-import { formatFileSize, formatDate } from '../../formatters'
+import { formatFileSize, formatDate } from '../../utils/formatters'
 
 interface WorkspaceSourceCardProps {
   source: {

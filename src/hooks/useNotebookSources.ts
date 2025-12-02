@@ -9,6 +9,12 @@ interface UseNotebookSourcesProps {
   refetch: () => Promise<void>
 }
 
+/**
+ * Fetches and manages the list of sources (PDFs, etc.) for a specific notebook.
+ * 
+ * @param notebookId - The ID of the notebook to fetch sources for
+ * @returns Object containing the sources list, loading state, error, and refetch function
+ */
 export function useNotebookSources(notebookId: string): UseNotebookSourcesProps {
   const [sources, setSources] = useState<Source[]>([])
   const [loading, setLoading] = useState(true)

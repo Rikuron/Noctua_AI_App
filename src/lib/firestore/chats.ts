@@ -9,7 +9,13 @@ import {
 import { db } from '../../firebase'
 import type { ChatMessage } from '../../types/chat'
 
-// Function to get or create a chat for a notebook
+/**
+ * Gets an existing chat session ID for a notebook or creates a new one if it doesn't exist.
+ * Uses a deterministic ID format `chat_${notebookId}` to ensure one chat per notebook.
+ * 
+ * @param notebookId - The ID of the notebook
+ * @returns Promise resolving to the chat ID
+ */
 export async function getOrCreateChat(notebookId: string): Promise<string> {
   const chatId = `chat_${notebookId}`
   const docRef = doc(db, `notebooks/${notebookId}/chats`, chatId)
@@ -25,7 +31,14 @@ export async function getOrCreateChat(notebookId: string): Promise<string> {
   return chatId
 }
 
-// Function to add a message to a chat
+/**
+ * Adds a new message to the chat history in Firestore.
+ * Uses `arrayUnion` to append the message to the `messages` array.
+ * 
+ * @param notebookId - The ID of the notebook
+ * @param chatId - The ID of the chat session
+ * @param message - The message object (role and content)
+ */
 export async function addChatMessage(
   notebookId: string,
   chatId: string,
@@ -41,7 +54,13 @@ export async function addChatMessage(
   })
 }
 
-// Function to get all chat messages for a notebook
+/**
+ * Retrieves the full chat history for a specific notebook.
+ * 
+ * @param notebookId - The ID of the notebook
+ * @param chatId - The ID of the chat session
+ * @returns Promise resolving to an array of ChatMessage objects
+ */
 export async function getChatMessages(
   notebookId: string,
   chatId: string

@@ -16,8 +16,14 @@ import type { Notebook, NotebookInput } from '../../types/notebook'
 // Reference to Notebooks Collection in Firebase DB/Firestore
 const notebooksCollection = collection(db, 'notebooks')
 
-// Function to Create a New Notebook
-// Returns the new notebook's ID
+/**
+ * Creates a new notebook for a user.
+ * 
+ * @param userId - The ID of the user creating the notebook
+ * @param input - The notebook details (name, description, icon)
+ * @returns Promise resolving to the new notebook ID
+ * @throws Error if Firebase is not initialized or permission is denied
+ */
 export async function createNotebook(
   userId: string,
   input: NotebookInput
@@ -55,7 +61,12 @@ export async function createNotebook(
   }
 }
 
-// Function to fetch Notebook by ID
+/**
+ * Retrieves a single notebook by its ID.
+ * 
+ * @param notebookId - The ID of the notebook to fetch
+ * @returns Promise resolving to the Notebook object or null if not found
+ */
 export async function getNotebook(notebookId: string): Promise<Notebook | null> {
   const docRef = doc(db, 'notebooks', notebookId)
   const docSnap = await getDoc(docRef)
@@ -74,7 +85,13 @@ export async function getNotebook(notebookId: string): Promise<Notebook | null> 
   }
 }
 
-// Function to fetch all notebooks for a user
+/**
+ * Retrieves all notebooks belonging to a specific user.
+ * Sorts results in memory to avoid complex Firestore index requirements.
+ * 
+ * @param userId - The ID of the user
+ * @returns Promise resolving to an array of Notebook objects
+ */
 export async function getUserNotebooks(userId: string): Promise<Notebook[]> {
   const q = query(
     notebooksCollection,
@@ -102,7 +119,13 @@ export async function getUserNotebooks(userId: string): Promise<Notebook[]> {
   return notebooks.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
 }
 
-// Function to update a notebook
+/**
+ * Updates an existing notebook's details.
+ * Automatically updates the `updatedAt` timestamp.
+ * 
+ * @param notebookId - The ID of the notebook to update
+ * @param updates - Partial notebook object containing fields to update
+ */
 export async function updateNotebook(
   notebookId: string,
   updates: Partial<NotebookInput>
@@ -114,7 +137,12 @@ export async function updateNotebook(
   })
 }
 
-// Function to delete a notebook
+/**
+ * Deletes a notebook from Firestore.
+ * Note: This does not automatically delete subcollections (sources, chats, etc.).
+ * 
+ * @param notebookId - The ID of the notebook to delete
+ */
 export async function deleteNotebook(notebookId: string): Promise<void> {
   const docRef = doc(db, 'notebooks', notebookId)
   await deleteDoc(docRef)

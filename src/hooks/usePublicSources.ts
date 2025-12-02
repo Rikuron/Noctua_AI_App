@@ -12,6 +12,12 @@ interface PublicSource {
   uploadedBy: string
 }
 
+/**
+ * Fetches the list of public sources available in the repository.
+ * Falls back to mock data if Firebase is not initialized.
+ * 
+ * @returns Object containing the list of public sources, loading state, error, and refetch function
+ */
 export function usePublicSources() {
   const [sources, setSources] = useState<PublicSource[]>([])
   const [loading, setLoading] = useState(true)

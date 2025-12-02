@@ -11,7 +11,15 @@ import type { Presentation } from '../../types/presentation'
 import { generatePresentation } from '../gemini'
 import { getNotebookSources } from './sources'
 
-// Function to generate a presentation for a notebook
+/**
+ * Generates a presentation from notebook sources using AI and saves it to Firestore.
+ * 
+ * @param notebookId - The ID of the notebook
+ * @param selectedSourceIds - Optional list of source IDs to use
+ * @param title - Optional title for the presentation
+ * @returns Promise resolving to the new presentation ID
+ * @throws Error if no sources are found or no text can be extracted
+ */
 export async function generateAndSavePresentation(
   notebookId: string,
   selectedSourceIds?: string[],
@@ -52,7 +60,12 @@ export async function generateAndSavePresentation(
   return docRef.id
 }
 
-// Function to fetch all presentations for a notebook
+/**
+ * Retrieves all presentations for a notebook, ordered by generation date.
+ * 
+ * @param notebookId - The ID of the notebook
+ * @returns Promise resolving to an array of Presentation objects
+ */
 export async function getNotebookPresentations(notebookId: string): Promise<Presentation[]> {
   const presentationsRef = collection(db, `notebooks/${notebookId}/presentations`)
   const q = query(presentationsRef, orderBy('generatedAt', 'desc'))

@@ -1,5 +1,5 @@
 import { Plus, FileText, Eye, HardDrive, Calendar, User } from 'lucide-react'
-import { formatFileSize, formatDate } from '../../formatters'
+import { formatFileSize, formatDate } from '../../utils/formatters'
 
 interface MaterialCardProps {
   source: {
