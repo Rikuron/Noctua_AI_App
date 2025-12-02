@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Sparkles, Clock, FileText, Loader2 } from 'lucide-react'
+import { Sparkles, Clock, FileText, Loader2, Download, Copy, FileCode, FileImage } from 'lucide-react'
 import { formatDateTime } from '../../formatters'
 import { generateAndSaveSummary, getNotebookSummaries } from '../../lib/firestore/summaries'
 import { getNotebookSources } from '../../lib/firestore/sources'
@@ -9,6 +9,8 @@ import { Modal } from './Modal'
 import { ErrorMessage } from '../ui/ErrorMessage'
 import { MarkdownContent } from '../ui/MarkdownContent'
 import { AppLoader } from '../ui/AppLoader'
+import { downloadUtils } from '../../utils/download'
+import removeMarkdown from 'remove-markdown'
 
 interface SummaryModalProps {
   isOpen: boolean
@@ -23,7 +25,9 @@ export function SummaryModal({ isOpen, onClose, notebookId }: SummaryModalProps)
   const [currentSummary, setCurrentSummary] = useState<Summary | null>(null)
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
+  const [downloadingFormat, setDownloadingFormat] = useState<'txt' | 'md' | 'pdf' | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [view, setView] = useState<'list' | 'generate' | 'view'>('list')
 
   useEffect(() => {
@@ -34,6 +38,7 @@ export function SummaryModal({ isOpen, onClose, notebookId }: SummaryModalProps)
     try {
       setLoading(true)
       setError(null)
+      setSuccessMessage(null)
 
       const [sourcesData, summariesData] = await Promise.all([
         getNotebookSources(notebookId),
@@ -48,7 +53,9 @@ export function SummaryModal({ isOpen, onClose, notebookId }: SummaryModalProps)
     } catch (err: any) {
       console.error('Error loading data: ', err)
       setError('Failed to load summaries. Please try again.')
-    } finally { setLoading(false) }
+    } finally { 
+      setLoading(false) 
+    }
   }
 
   const handleGenerateSummary = async () => {
@@ -60,6 +67,8 @@ export function SummaryModal({ isOpen, onClose, notebookId }: SummaryModalProps)
     try {
       setGenerating(true)
       setError(null)
+      setSuccessMessage(null)
+      
       const summaryId = await generateAndSaveSummary(notebookId, selectedSourceIds)
 
       // Reload summaries to get the new summary
@@ -71,11 +80,15 @@ export function SummaryModal({ isOpen, onClose, notebookId }: SummaryModalProps)
       if (newSummary) {
         setCurrentSummary(newSummary)
         setView('view')
+        setSuccessMessage('Summary generated successfully!')
       }
     } catch (err: any) {
       console.error('Error generating summary: ', err)
-      setError(`Failed to generate summary: ${err.message || 'Unknown error'}`)
-    } finally { setGenerating(false) }
+      const errorMsg = err.message || 'Unknown error'
+      setError(`Failed to generate summary: ${errorMsg}`)
+    } finally { 
+      setGenerating(false) 
+    }
   }
 
   const toggleSourceSelection = (sourceId: string) => {
@@ -85,6 +98,66 @@ export function SummaryModal({ isOpen, onClose, notebookId }: SummaryModalProps)
         : [...prev, sourceId]
     )
   }
+
+  const handleDownload = async (format: 'txt' | 'md' | 'pdf') => {
+    if (!currentSummary) return
+    
+    try {
+      setDownloadingFormat(format)
+      setError(null)
+      setSuccessMessage(null)
+      
+      const filename = `summary-${currentSummary.id.slice(0, 8)}-${Date.now()}`
+      const sourceNames = currentSummary.sourceNames || []
+      const generatedAt = currentSummary.generatedAt
+      
+      switch (format) {
+        case 'txt':
+          downloadUtils.txt(currentSummary.content, filename)
+          setSuccessMessage('TXT file downloaded successfully!')
+          break
+        case 'md':
+          downloadUtils.md(currentSummary.content, filename)
+          setSuccessMessage('Markdown file downloaded successfully!')
+          break
+        case 'pdf':
+          await downloadUtils.pdf(
+            currentSummary.content, 
+            filename,
+            sourceNames,
+            generatedAt,
+            'AI Summary' // Use a default name
+          )
+          setSuccessMessage('PDF downloaded successfully!')
+          break
+      }
+    } catch (err: any) {
+      console.error(`Error downloading ${format}:`, err)
+      setError(`Failed to download ${format.toUpperCase()}: ${err.message}`)
+    } finally {
+      setDownloadingFormat(null)
+    }
+  }
+
+  const handleCopyToClipboard = async () => {
+  if (!currentSummary) return
+  
+  try {
+    // Convert markdown to plain text before copying
+    const plainText = removeMarkdown(currentSummary.content, {
+      stripListLeaders: true,
+      listUnicodeChar: '•',
+      gfm: true,
+      useImgAltText: true,
+    })
+    
+    await navigator.clipboard.writeText(plainText)
+    setSuccessMessage('Summary copied to clipboard!')
+  } catch (err) {
+    console.error('Error copying to clipboard:', err)
+    setError('Failed to copy to clipboard')
+  }
+}
 
   if (!isOpen) return null
 
@@ -117,6 +190,11 @@ export function SummaryModal({ isOpen, onClose, notebookId }: SummaryModalProps)
             </div>
 
             {error && <ErrorMessage message={error} />}
+            {successMessage && (
+              <div className="mb-4 p-3 bg-green-900/30 border border-green-800 text-green-400 rounded-lg text-sm">
+                {successMessage}
+              </div>
+            )}
 
             {summaries.length === 0 ? (
               <div className="text-center py-12">
@@ -139,7 +217,7 @@ export function SummaryModal({ isOpen, onClose, notebookId }: SummaryModalProps)
                       setCurrentSummary(summary)
                       setView('view')
                     }}
-                    className="bg-gray-700 p-4 rounded-lg border border-gray-600 hover:border-gray-500 cursor-pointer transition-colors"
+                    className="bg-gray-700 p-4 rounded-lg border border-gray-600 hover:border-gray-500 hover:bg-gray-650 cursor-pointer transition-all duration-200 group"
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
@@ -148,7 +226,7 @@ export function SummaryModal({ isOpen, onClose, notebookId }: SummaryModalProps)
                           <span className="text-sm text-gray-400">{formatDateTime(summary.generatedAt)}</span>
                         </div>
                         <p className="text-gray-300 text-sm line-clamp-2 mb-2">
-                          {summary.content.substring(0, 150)}...
+                          {summary.content.substring(0, 200)}...
                         </p>
                         <div className="flex items-center gap-2 text-xs text-gray-400">
                           <FileText className="w-3 h-3" />
@@ -158,6 +236,7 @@ export function SummaryModal({ isOpen, onClose, notebookId }: SummaryModalProps)
                           )}
                         </div>
                       </div>
+                      <Sparkles className="w-4 h-4 text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                     </div>
                   </div>
                 ))}
@@ -169,7 +248,7 @@ export function SummaryModal({ isOpen, onClose, notebookId }: SummaryModalProps)
           <div>
             <button
               onClick={() => setView('list')}
-              className="mb-4 text-blue-400 hover:text-blue-300 hover:cursor-pointer text-sm"
+              className="mb-4 text-blue-400 hover:text-blue-300 hover:cursor-pointer text-sm flex items-center gap-1"
             >
               ← Back to summaries
             </button>
@@ -177,6 +256,11 @@ export function SummaryModal({ isOpen, onClose, notebookId }: SummaryModalProps)
             <h3 className="text-lg font-medium mb-4">Generate New Summary</h3>
 
             {error && <ErrorMessage message={error} />}
+            {successMessage && (
+              <div className="mb-4 p-3 bg-green-900/30 border border-green-800 text-green-400 rounded-lg text-sm">
+                {successMessage}
+              </div>
+            )}
 
             <p className="text-sm text-gray-400 mb-4">
               Select the sources you want to include in the summary:
@@ -186,10 +270,16 @@ export function SummaryModal({ isOpen, onClose, notebookId }: SummaryModalProps)
               <div className="text-center py-8 bg-gray-700 rounded-lg">
                 <FileText className="w-12 h-12 text-gray-400 mx-auto mb-3" />
                 <p className="text-gray-400">No sources available. Upload sources first.</p>
+                <button
+                  onClick={onClose}
+                  className="mt-4 px-4 py-2 bg-gray-600 hover:bg-gray-500 hover:cursor-pointer text-white rounded-lg transition-colors text-sm"
+                >
+                  Go to Sources
+                </button>
               </div>
             ) : (
               <>
-                <div className="space-y-2 mb-6 max-h-96 overflow-y-auto">
+                <div className="space-y-2 mb-6 max-h-96 overflow-y-auto custom-scrollbar pr-2">
                   {sources.map(source => {
                     const isRepo = source.fromRepository
                     const isSelected = selectedSourceIds.includes(source.id)
@@ -210,7 +300,7 @@ export function SummaryModal({ isOpen, onClose, notebookId }: SummaryModalProps)
                     return (
                       <label
                         key={source.id}
-                        className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${bgClass} ${borderClass}`}
+                        className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all duration-200 ${bgClass} ${borderClass}`}
                       >
                         <input
                           type="checkbox"
@@ -218,11 +308,11 @@ export function SummaryModal({ isOpen, onClose, notebookId }: SummaryModalProps)
                           onChange={() => toggleSourceSelection(source.id)}
                           className={`w-4 h-4 ${isRepo ? 'accent-green-500' : 'accent-blue-600'}`}
                         />
-                        <div className="flex-1">
+                        <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <p className="text-sm font-medium">{source.name}</p>
+                            <p className="text-sm font-medium truncate">{source.name}</p>
                             {isRepo && (
-                              <span className="text-[10px] bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded-full border border-green-500/30">
+                              <span className="text-[10px] bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded-full border border-green-500/30 whitespace-nowrap">
                                 Repository
                               </span>
                             )}
@@ -233,7 +323,7 @@ export function SummaryModal({ isOpen, onClose, notebookId }: SummaryModalProps)
                   })}
                 </div>
 
-                <div className="flex gap-3 mb-6">
+                <div className="flex gap-3 mb-6 flex-wrap">
                   <button
                     onClick={() => setSelectedSourceIds(sources.map(s => s.id))}
                     className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 hover:cursor-pointer text-white rounded-lg transition-colors text-sm"
@@ -242,16 +332,19 @@ export function SummaryModal({ isOpen, onClose, notebookId }: SummaryModalProps)
                   </button>
                   <button
                     onClick={() => setSelectedSourceIds([])}
-                    className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors text-sm"
+                    className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 hover:cursor-pointer text-white rounded-lg transition-colors text-sm"
                   >
                     Deselect All
                   </button>
+                  <div className="ml-auto text-sm text-gray-400">
+                    {selectedSourceIds.length} source{selectedSourceIds.length !== 1 ? 's' : ''} selected
+                  </div>
                 </div>
 
                 <button
                   onClick={handleGenerateSummary}
                   disabled={generating || selectedSourceIds.length === 0}
-                  className="w-full py-2 bg-blue-600 cursor-pointer hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2 text-sm"
+                  className="w-full py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-2 text-sm shadow-lg hover:shadow-xl disabled:shadow-none"
                 >
                   {generating ? (
                     <>
@@ -261,7 +354,7 @@ export function SummaryModal({ isOpen, onClose, notebookId }: SummaryModalProps)
                   ) : (
                     <>
                       <Sparkles className="w-4 h-4" />
-                      Generate Summary ({selectedSourceIds.length} source{selectedSourceIds.length !== 1 ? 's' : ''})
+                      Generate Summary from {selectedSourceIds.length} source{selectedSourceIds.length !== 1 ? 's' : ''}
                     </>
                   )}
                 </button>
@@ -276,31 +369,111 @@ export function SummaryModal({ isOpen, onClose, notebookId }: SummaryModalProps)
                 setCurrentSummary(null)
                 setView('list')
               }}
-              className="mb-4 text-blue-400 hover:text-blue-300 hover:cursor-pointer text-sm"
+              className="mb-4 text-blue-400 hover:text-blue-300 hover:cursor-pointer text-sm flex items-center gap-1"
             >
               ← Back to summaries
             </button>
 
+            {error && <ErrorMessage message={error} />}
+            {successMessage && (
+              <div className="mb-4 p-3 bg-green-900/30 border border-green-800 text-green-400 rounded-lg text-sm">
+                {successMessage}
+              </div>
+            )}
+
             {currentSummary && (
               <div>
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <div className="flex items-center gap-2 text-sm text-gray-400 mb-2">
-                      <Clock className="w-4 h-4" />
-                      <span>{formatDateTime(currentSummary.generatedAt)}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-gray-400">
-                      <FileText className="w-4 h-4" />
-                      <span>{currentSummary.sourceIds.length} source(s) used</span>
+                {/* Header with metadata and download buttons */}
+                <div className="bg-gradient-to-r from-gray-800 to-gray-900 rounded-lg p-5 mb-6 border border-gray-700">
+                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 text-sm text-gray-400 mb-3">
+                        <Clock className="w-4 h-4" />
+                        <span>{formatDateTime(currentSummary.generatedAt)}</span>
+                        <span className="mx-2">•</span>
+                        <FileText className="w-4 h-4" />
+                        <span>{currentSummary.sourceIds.length} source{currentSummary.sourceIds.length !== 1 ? 's' : ''} used</span>
+                      </div>
+                      
                       {currentSummary.sourceNames && currentSummary.sourceNames.length > 0 && (
-                        <span className="text-xs">• {currentSummary.sourceNames.join(', ')}</span>
+                        <div className="flex flex-wrap gap-2 mb-3">
+                          {currentSummary.sourceNames.map((name, index) => (
+                            <span 
+                              key={index} 
+                              className="px-2 py-1 bg-gray-700 text-gray-300 text-xs rounded-md border border-gray-600"
+                            >
+                              {name}
+                            </span>
+                          ))}
+                        </div>
                       )}
+                    </div>
+                    
+                    {/* Download Buttons - Fixed loading states */}
+                    <div className="flex flex-wrap gap-2 lg:flex-nowrap">
+                      <button
+                        onClick={handleCopyToClipboard}
+                        disabled={downloadingFormat !== null}
+                        className="flex items-center gap-2 px-3 py-2 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:cursor-not-allowed text-white rounded-lg transition-colors text-sm"
+                        title="Copy to clipboard"
+                      >
+                        <Copy className="w-4 h-4" />
+                        <span className="hidden sm:inline">Copy</span>
+                      </button>
+                      
+                      <button
+                        onClick={() => handleDownload('txt')}
+                        disabled={downloadingFormat !== null}
+                        className="flex items-center gap-2 px-3 py-2 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:cursor-not-allowed text-white rounded-lg transition-colors text-sm"
+                        title="Download as TXT"
+                      >
+                        {downloadingFormat === 'txt' ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <FileText className="w-4 h-4" />
+                        )}
+                        <span className="hidden sm:inline">TXT</span>
+                      </button>
+                      
+                      <button
+                        onClick={() => handleDownload('md')}
+                        disabled={downloadingFormat !== null}
+                        className="flex items-center gap-2 px-3 py-2 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:cursor-not-allowed text-white rounded-lg transition-colors text-sm"
+                        title="Download as Markdown"
+                      >
+                        {downloadingFormat === 'md' ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <FileCode className="w-4 h-4" />
+                        )}
+                        <span className="hidden sm:inline">MD</span>
+                      </button>
+                      
+                      <button
+                        onClick={() => handleDownload('pdf')}
+                        disabled={downloadingFormat !== null}
+                        className="flex items-center gap-2 px-3 py-2 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:cursor-not-allowed text-white rounded-lg transition-colors text-sm"
+                        title="Download as PDF"
+                      >
+                        {downloadingFormat === 'pdf' ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <FileImage className="w-4 h-4" />
+                        )}
+                        <span className="hidden sm:inline">PDF</span>
+                      </button>
                     </div>
                   </div>
                 </div>
 
+                {/* Summary Content */}
                 <div className="bg-gray-700 rounded-lg p-6 border border-gray-600">
                   <MarkdownContent content={currentSummary.content} />
+                </div>
+
+                {/* Download reminder */}
+                <div className="mt-6 text-center text-sm text-gray-400">
+                  <p>Don't forget to download your summary for offline use!</p>
                 </div>
               </div>
             )}
