@@ -2,6 +2,8 @@ import {
   collection,
   getDocs,
   addDoc,
+  deleteDoc,
+  doc,
   query,
   orderBy,
   Timestamp,
@@ -82,4 +84,15 @@ export async function getNotebookSummaries(notebookId: string): Promise<Summary[
   })
 
   return summaries
+}
+
+/**
+ * Deletes a summary from a notebook.
+ * 
+ * @param notebookId - The ID of the notebook
+ * @param summaryId - The ID of the summary to delete
+ */
+export async function deleteSummary(notebookId: string, summaryId: string): Promise<void> {
+  const docRef = doc(db, `notebooks/${notebookId}/summaries`, summaryId)
+  await deleteDoc(docRef)
 }

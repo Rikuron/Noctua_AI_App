@@ -2,6 +2,8 @@ import {
   collection,
   getDocs,
   addDoc,
+  deleteDoc,
+  doc,
   query,
   orderBy,
   Timestamp,
@@ -87,4 +89,16 @@ export async function getNotebookFlashcards(notebookId: string): Promise<Flashca
 
   return flashcards
 }
+
+/**
+ * Deletes a flashcard deck from a notebook.
+ * 
+ * @param notebookId - The ID of the notebook
+ * @param flashcardId - The ID of the flashcard deck to delete
+ */
+export async function deleteFlashcard(notebookId: string, flashcardId: string): Promise<void> {
+  const docRef = doc(db, `notebooks/${notebookId}/flashcards`, flashcardId)
+  await deleteDoc(docRef)
+}
+
 

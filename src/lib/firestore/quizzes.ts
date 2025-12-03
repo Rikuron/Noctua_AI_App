@@ -2,6 +2,8 @@ import {
   collection,
   getDocs,
   addDoc,
+  deleteDoc,
+  doc,
   query,
   orderBy,
   Timestamp,
@@ -87,4 +89,16 @@ export async function getNotebookQuizzes(notebookId: string): Promise<Quiz[]> {
 
   return quizzes
 }
+
+/**
+ * Deletes a quiz from a notebook.
+ * 
+ * @param notebookId - The ID of the notebook
+ * @param quizId - The ID of the quiz to delete
+ */
+export async function deleteQuiz(notebookId: string, quizId: string): Promise<void> {
+  const docRef = doc(db, `notebooks/${notebookId}/quizzes`, quizId)
+  await deleteDoc(docRef)
+}
+
 

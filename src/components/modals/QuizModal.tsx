@@ -1,7 +1,8 @@
+
 import { useState, useEffect } from 'react'
-import { HelpCircle, Clock, FileText, Loader2, ChevronLeft, ChevronRight, CheckCircle2, XCircle, Trophy } from 'lucide-react'
+import { HelpCircle, Clock, FileText, Loader2, ChevronLeft, ChevronRight, CheckCircle2, XCircle, Trophy, Trash2 } from 'lucide-react'
 import { formatDateTime } from '../../utils/formatters'
-import { generateAndSaveQuiz, getNotebookQuizzes } from '../../lib/firestore/quizzes'
+import { generateAndSaveQuiz, getNotebookQuizzes, deleteQuiz } from '../../lib/firestore/quizzes'
 import { getNotebookSources } from '../../lib/firestore/sources'
 import type { Source } from '../../types/source'
 import type { Quiz } from '../../types/quiz'
@@ -24,6 +25,8 @@ export function QuizModal({ isOpen, onClose, notebookId }: QuizModalProps) {
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const [view, setView] = useState<'list' | 'generate' | 'take' | 'review'>('list')
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
   const [selectedAnswers, setSelectedAnswers] = useState<Map<number, number>>(new Map())
@@ -86,7 +89,7 @@ export function QuizModal({ isOpen, onClose, notebookId }: QuizModalProps) {
       }
     } catch (err: any) {
       console.error('Error generating quiz: ', err)
-      setError(`Failed to generate quiz: ${err.message || 'Unknown error'}`)
+      setError(`Failed to generate quiz: ${err.message || 'Unknown error'} `)
     } finally { setGenerating(false) }
   }
 
@@ -125,7 +128,7 @@ export function QuizModal({ isOpen, onClose, notebookId }: QuizModalProps) {
 
   const calculateScore = (): { correct: number; total: number; percentage: number } => {
     if (!currentQuiz) return { correct: 0, total: 0, percentage: 0 }
-    
+
     let correct = 0
     currentQuiz.questions.forEach((question, index) => {
       const selectedAnswer = selectedAnswers.get(index)
@@ -138,6 +141,36 @@ export function QuizModal({ isOpen, onClose, notebookId }: QuizModalProps) {
     const percentage = total > 0 ? Math.round((correct / total) * 100) : 0
 
     return { correct, total, percentage }
+  }
+
+  const handleDelete = async (quizId: string, e?: React.MouseEvent) => {
+    e?.stopPropagation()
+
+    if (!confirm('Are you sure you want to delete this quiz? This action cannot be undone.')) {
+      return
+    }
+
+    try {
+      setDeletingId(quizId)
+      setError(null)
+      await deleteQuiz(notebookId, quizId)
+
+      // Remove from local state
+      setQuizzes(prev => prev.filter(q => q.id !== quizId))
+
+      // If we're viewing this quiz, go back to list
+      if (currentQuiz?.id === quizId) {
+        setCurrentQuiz(null)
+        setView('list')
+      }
+
+      setSuccessMessage('Quiz deleted successfully')
+    } catch (err) {
+      console.error('Error deleting quiz:', err)
+      setError('Failed to delete quiz')
+    } finally {
+      setDeletingId(null)
+    }
   }
 
   const currentQuestion = currentQuiz?.questions[currentQuestionIndex]
@@ -218,6 +251,21 @@ export function QuizModal({ isOpen, onClose, notebookId }: QuizModalProps) {
                           )}
                           <span>• {quiz.questions.length} questions</span>
                         </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={(e) => handleDelete(quiz.id, e)}
+                          disabled={deletingId === quiz.id}
+                          className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
+                          title="Delete quiz"
+                        >
+                          {deletingId === quiz.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="w-4 h-4" />
+                          )}
+                        </button>
+                        <HelpCircle className="w-4 h-4 text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                       </div>
                     </div>
                   </div>
@@ -368,6 +416,19 @@ export function QuizModal({ isOpen, onClose, notebookId }: QuizModalProps) {
                       <FileText className="w-4 h-4" />
                       <span>{currentQuiz.sourceIds.length} source(s) used</span>
                     </div>
+                    <button
+                      onClick={() => currentQuiz && handleDelete(currentQuiz.id)}
+                      disabled={deletingId === currentQuiz?.id}
+                      className="flex items-center gap-2 px-3 py-1.5 bg-gray-700 hover:bg-red-900/30 text-gray-300 hover:text-red-400 disabled:bg-gray-800 disabled:cursor-not-allowed rounded-lg transition-colors text-xs border border-transparent hover:border-red-900/50 ml-auto"
+                      title="Delete quiz"
+                    >
+                      {deletingId === currentQuiz?.id ? (
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                      ) : (
+                        <Trash2 className="w-3 h-3" />
+                      )}
+                      <span>Delete</span>
+                    </button>
                   </div>
                 </div>
 
@@ -398,16 +459,14 @@ export function QuizModal({ isOpen, onClose, notebookId }: QuizModalProps) {
                           <button
                             key={optionIndex}
                             onClick={() => handleSelectAnswer(currentQuestionIndex, optionIndex)}
-                            className={`w-full text-left p-4 rounded-lg border transition-colors ${
-                              isSelected
-                                ? 'bg-blue-600 border-blue-500 text-white'
-                                : 'bg-gray-600 border-gray-500 text-gray-200 hover:bg-gray-500'
-                            }`}
+                            className={`w-full text-left p-4 rounded-lg border transition-colors ${isSelected
+                              ? 'bg-blue-600 border-blue-500 text-white'
+                              : 'bg-gray-600 border-gray-500 text-gray-200 hover:bg-gray-500'
+                              }`}
                           >
                             <div className="flex items-center gap-3">
-                              <div className={`w-6 h-6 rounded-full flex items-center justify-center font-medium ${
-                                isSelected ? 'bg-blue-500 text-white' : 'bg-gray-500 text-gray-300'
-                              }`}>
+                              <div className={`w-6 h-6 rounded-full flex items-center justify-center font-medium ${isSelected ? 'bg-blue-500 text-white' : 'bg-gray-500 text-gray-300'
+                                }`}>
                                 {String.fromCharCode(65 + optionIndex)}
                               </div>
                               <span><MarkdownContent content={option} /></span>
@@ -489,9 +548,8 @@ export function QuizModal({ isOpen, onClose, notebookId }: QuizModalProps) {
                     return (
                       <div
                         key={index}
-                        className={`bg-gray-700 rounded-lg p-4 border ${
-                          isCorrect ? 'border-green-500' : 'border-red-500'
-                        }`}
+                        className={`bg-gray-700 rounded-lg p-4 border ${isCorrect ? 'border-green-500' : 'border-red-500'
+                          }`}
                       >
                         <div className="flex items-start gap-3 mb-3">
                           {isCorrect ? (

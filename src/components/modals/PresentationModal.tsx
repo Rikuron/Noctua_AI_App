@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
-import { Presentation as PresentationIcon, Clock, FileText, Loader2, ChevronLeft, ChevronRight, Play, Pause } from 'lucide-react'
+import { Presentation as PresentationIcon, Clock, FileText, Loader2, ChevronLeft, ChevronRight, Play, Pause, Trash2 } from 'lucide-react'
 import { formatDateTime } from '../../utils/formatters'
-import { generateAndSavePresentation, getNotebookPresentations } from '../../lib/firestore/presentations'
+import { generateAndSavePresentation, getNotebookPresentations, deletePresentation } from '../../lib/firestore/presentations'
 import { getNotebookSources } from '../../lib/firestore/sources'
 import type { Source } from '../../types/source'
 import type { Presentation } from '../../types/presentation'
@@ -30,6 +30,8 @@ export function PresentationModal({ isOpen, onClose, notebookId }: PresentationM
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const [view, setView] = useState<'list' | 'generate' | 'view'>('list')
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0)
   const [customTitle, setCustomTitle] = useState('')
@@ -125,6 +127,36 @@ export function PresentationModal({ isOpen, onClose, notebookId }: PresentationM
     return () => window.removeEventListener('keydown', handleKeyPress)
   }, [view, isOpen, currentSlideIndex, totalSlides, isPresenting])
 
+  const handleDelete = async (presentationId: string, e?: React.MouseEvent) => {
+    e?.stopPropagation()
+
+    if (!confirm('Are you sure you want to delete this presentation? This action cannot be undone.')) {
+      return
+    }
+
+    try {
+      setDeletingId(presentationId)
+      setError(null)
+      await deletePresentation(notebookId, presentationId)
+
+      // Remove from local state
+      setPresentations(prev => prev.filter(p => p.id !== presentationId))
+
+      // If we're viewing this presentation, go back to list
+      if (currentPresentation?.id === presentationId) {
+        setCurrentPresentation(null)
+        setView('list')
+      }
+
+      setSuccessMessage('Presentation deleted successfully')
+    } catch (err) {
+      console.error('Error deleting presentation:', err)
+      setError('Failed to delete presentation')
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
   if (!isOpen) return null
 
   return (
@@ -179,7 +211,7 @@ export function PresentationModal({ isOpen, onClose, notebookId }: PresentationM
                       setCurrentSlideIndex(0)
                       setView('view')
                     }}
-                    className="bg-gray-700 p-4 rounded-lg border border-gray-600 hover:border-gray-500 cursor-pointer transition-colors"
+                    className="bg-gray-700 p-4 rounded-lg border border-gray-600 hover:border-gray-500 cursor-pointer transition-colors group"
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
@@ -196,6 +228,21 @@ export function PresentationModal({ isOpen, onClose, notebookId }: PresentationM
                           )}
                           <span>• {parseSlides(presentation.content).length} slides</span>
                         </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={(e) => handleDelete(presentation.id, e)}
+                          disabled={deletingId === presentation.id}
+                          className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
+                          title="Delete presentation"
+                        >
+                          {deletingId === presentation.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="w-4 h-4" />
+                          )}
+                        </button>
+                        <Play className="w-4 h-4 text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                       </div>
                     </div>
                   </div>
@@ -372,25 +419,42 @@ export function PresentationModal({ isOpen, onClose, notebookId }: PresentationM
                 {/* Slide Navigation */}
                 {!isPresenting && (
                   <div className="flex items-center justify-between mb-4 bg-gray-700 rounded-lg p-2">
-                    <button
-                      onClick={handlePreviousSlide}
-                      disabled={currentSlideIndex === 0}
-                      className="px-3 py-1.5 bg-gray-600 hover:bg-gray-500 disabled:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded transition-colors flex items-center gap-2 text-sm"
-                    >
-                      <ChevronLeft className="w-4 h-4" />
-                      Previous
-                    </button>
-                    <span className="text-sm text-gray-300">
-                      Slide {currentSlideIndex + 1} of {totalSlides}
-                    </span>
-                    <button
-                      onClick={handleNextSlide}
-                      disabled={currentSlideIndex === totalSlides - 1}
-                      className="px-3 py-1.5 bg-gray-600 hover:bg-gray-500 disabled:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded transition-colors flex items-center gap-2 text-sm"
-                    >
-                      Next
-                      <ChevronRight className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => currentPresentation && handleDelete(currentPresentation.id)}
+                        disabled={deletingId === currentPresentation?.id}
+                        className="flex items-center gap-2 px-3 py-2 bg-gray-700 hover:bg-red-900/30 text-gray-300 hover:text-red-400 disabled:bg-gray-800 disabled:cursor-not-allowed rounded-lg transition-colors text-sm border border-transparent hover:border-red-900/50"
+                        title="Delete presentation"
+                      >
+                        {deletingId === currentPresentation?.id ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-4 h-4" />
+                        )}
+                        <span>Delete</span>
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={handlePreviousSlide}
+                        disabled={currentSlideIndex === 0}
+                        className="px-3 py-1.5 bg-gray-600 hover:bg-gray-500 disabled:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded transition-colors flex items-center gap-2 text-sm"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                        Previous
+                      </button>
+                      <span className="text-sm text-gray-300">
+                        Slide {currentSlideIndex + 1} of {totalSlides}
+                      </span>
+                      <button
+                        onClick={handleNextSlide}
+                        disabled={currentSlideIndex === totalSlides - 1}
+                        className="px-3 py-1.5 bg-gray-600 hover:bg-gray-500 disabled:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded transition-colors flex items-center gap-2 text-sm"
+                      >
+                        Next
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 )}
 
