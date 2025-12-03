@@ -25,7 +25,6 @@ export function QuizModal({ isOpen, onClose, notebookId }: QuizModalProps) {
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [view, setView] = useState<'list' | 'generate' | 'take' | 'review'>('list')
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
@@ -164,7 +163,10 @@ export function QuizModal({ isOpen, onClose, notebookId }: QuizModalProps) {
         setView('list')
       }
 
-      setSuccessMessage('Quiz deleted successfully')
+      if (currentQuiz?.id === quizId) {
+        setCurrentQuiz(null)
+        setView('list')
+      }
     } catch (err) {
       console.error('Error deleting quiz:', err)
       setError('Failed to delete quiz')

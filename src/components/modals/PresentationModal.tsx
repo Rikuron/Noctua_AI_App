@@ -30,7 +30,6 @@ export function PresentationModal({ isOpen, onClose, notebookId }: PresentationM
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [view, setView] = useState<'list' | 'generate' | 'view'>('list')
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0)
@@ -148,7 +147,10 @@ export function PresentationModal({ isOpen, onClose, notebookId }: PresentationM
         setView('list')
       }
 
-      setSuccessMessage('Presentation deleted successfully')
+      if (currentPresentation?.id === presentationId) {
+        setCurrentPresentation(null)
+        setView('list')
+      }
     } catch (err) {
       console.error('Error deleting presentation:', err)
       setError('Failed to delete presentation')
