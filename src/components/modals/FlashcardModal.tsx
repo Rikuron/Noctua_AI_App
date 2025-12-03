@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
-import { StickyNote, Clock, FileText, Loader2, ChevronLeft, ChevronRight, RotateCcw, RotateCw, Copy, FileCode, FileImage } from 'lucide-react'
+import { StickyNote, Clock, FileText, Loader2, ChevronLeft, ChevronRight, RotateCcw, RotateCw, Copy, FileCode, FileImage, Trash2 } from 'lucide-react'
 import { formatDateTime } from '../../utils/formatters'
-import { generateAndSaveFlashcards, getNotebookFlashcards } from '../../lib/firestore/flashcards'
+import { generateAndSaveFlashcards, getNotebookFlashcards, deleteFlashcard } from '../../lib/firestore/flashcards'
 import { getNotebookSources } from '../../lib/firestore/sources'
 import type { Source } from '../../types/source'
 import type { Flashcard } from '../../types/flashcard'
@@ -28,6 +28,7 @@ export function FlashcardModal({ isOpen, onClose, notebookId }: FlashcardModalPr
   const [downloadingFormat, setDownloadingFormat] = useState<'txt' | 'md' | 'pdf' | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const [view, setView] = useState<'list' | 'generate' | 'study'>('list')
   const [currentCardIndex, setCurrentCardIndex] = useState(0)
   const [isFlipped, setIsFlipped] = useState(false)
@@ -135,30 +136,30 @@ export function FlashcardModal({ isOpen, onClose, notebookId }: FlashcardModalPr
       formattedContent += `Sources: ${flashcard.sourceNames.join(', ')}\n`
     }
     formattedContent += `\n---\n\n`
-    
+
     flashcard.cards.forEach((card, index) => {
       formattedContent += `## Card ${index + 1}\n\n`
       formattedContent += `**Q:** ${card.front}\n\n`
       formattedContent += `**A:** ${card.back}\n\n`
       formattedContent += `---\n\n`
     })
-    
+
     return formattedContent
   }
 
   const handleDownload = async (format: 'txt' | 'md' | 'pdf') => {
     if (!currentFlashcard) return
-    
+
     try {
       setDownloadingFormat(format)
       setError(null)
       setSuccessMessage(null)
-      
+
       const filename = `flashcards-${currentFlashcard.id.slice(0, 8)}-${Date.now()}`
       const sourceNames = currentFlashcard.sourceNames || []
       const generatedAt = currentFlashcard.generatedAt
       const flashcardContent = formatFlashcardsForDownload(currentFlashcard)
-      
+
       switch (format) {
         case 'txt':
           const plainText = removeMarkdown(flashcardContent, {
@@ -176,7 +177,7 @@ export function FlashcardModal({ isOpen, onClose, notebookId }: FlashcardModalPr
           break
         case 'pdf':
           await downloadUtils.pdf(
-            flashcardContent, 
+            flashcardContent,
             filename,
             sourceNames,
             generatedAt,
@@ -195,7 +196,7 @@ export function FlashcardModal({ isOpen, onClose, notebookId }: FlashcardModalPr
 
   const handleCopyToClipboard = async () => {
     if (!currentFlashcard) return
-    
+
     try {
       const flashcardContent = formatFlashcardsForDownload(currentFlashcard)
       // Convert markdown to plain text before copying
@@ -205,12 +206,42 @@ export function FlashcardModal({ isOpen, onClose, notebookId }: FlashcardModalPr
         gfm: true,
         useImgAltText: true,
       })
-      
+
       await navigator.clipboard.writeText(plainText)
       setSuccessMessage('Flashcards copied to clipboard!')
     } catch (err) {
       console.error('Error copying to clipboard:', err)
       setError('Failed to copy to clipboard')
+    }
+  }
+
+  const handleDelete = async (flashcardId: string, e?: React.MouseEvent) => {
+    e?.stopPropagation()
+
+    if (!confirm('Are you sure you want to delete this flashcard deck? This action cannot be undone.')) {
+      return
+    }
+
+    try {
+      setDeletingId(flashcardId)
+      setError(null)
+      await deleteFlashcard(notebookId, flashcardId)
+
+      // Remove from local state
+      setFlashcards(prev => prev.filter(f => f.id !== flashcardId))
+
+      // If we're viewing this deck, go back to list
+      if (currentFlashcard?.id === flashcardId) {
+        setCurrentFlashcard(null)
+        setView('list')
+      }
+
+      setSuccessMessage('Flashcard deck deleted successfully')
+    } catch (err) {
+      console.error('Error deleting flashcard deck:', err)
+      setError('Failed to delete flashcard deck')
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -314,7 +345,21 @@ export function FlashcardModal({ isOpen, onClose, notebookId }: FlashcardModalPr
                           <span>• {flashcard.cards.length} cards</span>
                         </div>
                       </div>
-                      <StickyNote className="w-4 h-4 text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={(e) => handleDelete(flashcard.id, e)}
+                          disabled={deletingId === flashcard.id}
+                          className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
+                          title="Delete flashcard deck"
+                        >
+                          {deletingId === flashcard.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="w-4 h-4" />
+                          )}
+                        </button>
+                        <StickyNote className="w-4 h-4 text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -481,12 +526,12 @@ export function FlashcardModal({ isOpen, onClose, notebookId }: FlashcardModalPr
                         <FileText className="w-4 h-4" />
                         <span>{currentFlashcard.sourceIds.length} source{currentFlashcard.sourceIds.length !== 1 ? 's' : ''} used</span>
                       </div>
-                      
+
                       {currentFlashcard.sourceNames && currentFlashcard.sourceNames.length > 0 && (
                         <div className="flex flex-wrap gap-2 mb-3">
                           {currentFlashcard.sourceNames.map((name, index) => (
-                            <span 
-                              key={index} 
+                            <span
+                              key={index}
                               className="px-2 py-1 bg-gray-700 text-gray-300 text-xs rounded-md border border-gray-600"
                             >
                               {name}
@@ -495,7 +540,7 @@ export function FlashcardModal({ isOpen, onClose, notebookId }: FlashcardModalPr
                         </div>
                       )}
                     </div>
-                    
+
                     {/* Download Buttons */}
                     <div className="flex flex-wrap gap-2 lg:flex-nowrap">
                       <button
@@ -507,7 +552,7 @@ export function FlashcardModal({ isOpen, onClose, notebookId }: FlashcardModalPr
                         <Copy className="w-4 h-4" />
                         <span className="hidden sm:inline">Copy</span>
                       </button>
-                      
+
                       <button
                         onClick={() => handleDownload('txt')}
                         disabled={downloadingFormat !== null}
@@ -521,7 +566,7 @@ export function FlashcardModal({ isOpen, onClose, notebookId }: FlashcardModalPr
                         )}
                         <span className="hidden sm:inline">TXT</span>
                       </button>
-                      
+
                       <button
                         onClick={() => handleDownload('md')}
                         disabled={downloadingFormat !== null}
@@ -535,8 +580,8 @@ export function FlashcardModal({ isOpen, onClose, notebookId }: FlashcardModalPr
                         )}
                         <span className="hidden sm:inline">MD</span>
                       </button>
-                      
-                  <button
+
+                      <button
                         onClick={() => handleDownload('pdf')}
                         disabled={downloadingFormat !== null}
                         className="flex items-center gap-2 px-3 py-2 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:cursor-not-allowed text-white rounded-lg transition-colors text-sm"
@@ -548,6 +593,21 @@ export function FlashcardModal({ isOpen, onClose, notebookId }: FlashcardModalPr
                           <FileImage className="w-4 h-4" />
                         )}
                         <span className="hidden sm:inline">PDF</span>
+                      </button>
+
+                      <div className="w-px h-8 bg-gray-700 mx-1 hidden lg:block" />
+
+                      <button
+                        onClick={() => currentFlashcard && handleDelete(currentFlashcard.id)}
+                        disabled={deletingId === currentFlashcard?.id}
+                        className="flex items-center gap-2 px-3 py-2 bg-gray-700 hover:bg-red-900/30 text-gray-300 hover:text-red-400 disabled:bg-gray-800 disabled:cursor-not-allowed rounded-lg transition-colors text-sm border border-transparent hover:border-red-900/50"
+                        title="Delete flashcard deck"
+                      >
+                        {deletingId === currentFlashcard?.id ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-4 h-4" />
+                        )}
                       </button>
                     </div>
                   </div>

@@ -2,6 +2,8 @@ import {
   collection,
   getDocs,
   addDoc,
+  deleteDoc,
+  doc,
   query,
   orderBy,
   Timestamp,
@@ -87,4 +89,16 @@ export async function getNotebookPresentations(notebookId: string): Promise<Pres
 
   return presentations
 }
+
+/**
+ * Deletes a presentation from a notebook.
+ * 
+ * @param notebookId - The ID of the notebook
+ * @param presentationId - The ID of the presentation to delete
+ */
+export async function deletePresentation(notebookId: string, presentationId: string): Promise<void> {
+  const docRef = doc(db, `notebooks/${notebookId}/presentations`, presentationId)
+  await deleteDoc(docRef)
+}
+
 

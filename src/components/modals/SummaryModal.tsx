@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
-import { Sparkles, Clock, FileText, Loader2, Copy, FileCode, FileImage } from 'lucide-react'
+import { Sparkles, Clock, FileText, Loader2, Copy, FileCode, FileImage, Trash2 } from 'lucide-react'
 import { formatDateTime } from '../../utils/formatters'
-import { generateAndSaveSummary, getNotebookSummaries } from '../../lib/firestore/summaries'
+import { generateAndSaveSummary, getNotebookSummaries, deleteSummary } from '../../lib/firestore/summaries'
 import { getNotebookSources } from '../../lib/firestore/sources'
 import type { Source } from '../../types/source'
 import type { Summary } from '../../types/summary'
@@ -28,6 +28,7 @@ export function SummaryModal({ isOpen, onClose, notebookId }: SummaryModalProps)
   const [downloadingFormat, setDownloadingFormat] = useState<'txt' | 'md' | 'pdf' | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const [view, setView] = useState<'list' | 'generate' | 'view'>('list')
 
   useEffect(() => {
@@ -53,8 +54,8 @@ export function SummaryModal({ isOpen, onClose, notebookId }: SummaryModalProps)
     } catch (err: any) {
       console.error('Error loading data: ', err)
       setError('Failed to load summaries. Please try again.')
-    } finally { 
-      setLoading(false) 
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -68,7 +69,7 @@ export function SummaryModal({ isOpen, onClose, notebookId }: SummaryModalProps)
       setGenerating(true)
       setError(null)
       setSuccessMessage(null)
-      
+
       const summaryId = await generateAndSaveSummary(notebookId, selectedSourceIds)
 
       // Reload summaries to get the new summary
@@ -86,8 +87,8 @@ export function SummaryModal({ isOpen, onClose, notebookId }: SummaryModalProps)
       console.error('Error generating summary: ', err)
       const errorMsg = err.message || 'Unknown error'
       setError(`Failed to generate summary: ${errorMsg}`)
-    } finally { 
-      setGenerating(false) 
+    } finally {
+      setGenerating(false)
     }
   }
 
@@ -101,16 +102,16 @@ export function SummaryModal({ isOpen, onClose, notebookId }: SummaryModalProps)
 
   const handleDownload = async (format: 'txt' | 'md' | 'pdf') => {
     if (!currentSummary) return
-    
+
     try {
       setDownloadingFormat(format)
       setError(null)
       setSuccessMessage(null)
-      
+
       const filename = `summary-${currentSummary.id.slice(0, 8)}-${Date.now()}`
       const sourceNames = currentSummary.sourceNames || []
       const generatedAt = currentSummary.generatedAt
-      
+
       switch (format) {
         case 'txt':
           downloadUtils.txt(currentSummary.content, filename)
@@ -122,7 +123,7 @@ export function SummaryModal({ isOpen, onClose, notebookId }: SummaryModalProps)
           break
         case 'pdf':
           await downloadUtils.pdf(
-            currentSummary.content, 
+            currentSummary.content,
             filename,
             sourceNames,
             generatedAt,
@@ -140,24 +141,54 @@ export function SummaryModal({ isOpen, onClose, notebookId }: SummaryModalProps)
   }
 
   const handleCopyToClipboard = async () => {
-  if (!currentSummary) return
-  
-  try {
-    // Convert markdown to plain text before copying
-    const plainText = removeMarkdown(currentSummary.content, {
-      stripListLeaders: true,
-      listUnicodeChar: '•',
-      gfm: true,
-      useImgAltText: true,
-    })
-    
-    await navigator.clipboard.writeText(plainText)
-    setSuccessMessage('Summary copied to clipboard!')
-  } catch (err) {
-    console.error('Error copying to clipboard:', err)
-    setError('Failed to copy to clipboard')
+    if (!currentSummary) return
+
+    try {
+      // Convert markdown to plain text before copying
+      const plainText = removeMarkdown(currentSummary.content, {
+        stripListLeaders: true,
+        listUnicodeChar: '•',
+        gfm: true,
+        useImgAltText: true,
+      })
+
+      await navigator.clipboard.writeText(plainText)
+      setSuccessMessage('Summary copied to clipboard!')
+    } catch (err) {
+      console.error('Error copying to clipboard:', err)
+      setError('Failed to copy to clipboard')
+    }
   }
-}
+
+  const handleDelete = async (summaryId: string, e?: React.MouseEvent) => {
+    e?.stopPropagation()
+
+    if (!confirm('Are you sure you want to delete this summary? This action cannot be undone.')) {
+      return
+    }
+
+    try {
+      setDeletingId(summaryId)
+      setError(null)
+      await deleteSummary(notebookId, summaryId)
+
+      // Remove from local state
+      setSummaries(prev => prev.filter(s => s.id !== summaryId))
+
+      // If we're viewing this summary, go back to list
+      if (currentSummary?.id === summaryId) {
+        setCurrentSummary(null)
+        setView('list')
+      }
+
+      setSuccessMessage('Summary deleted successfully')
+    } catch (err) {
+      console.error('Error deleting summary:', err)
+      setError('Failed to delete summary')
+    } finally {
+      setDeletingId(null)
+    }
+  }
 
   if (!isOpen) return null
 
@@ -236,7 +267,21 @@ export function SummaryModal({ isOpen, onClose, notebookId }: SummaryModalProps)
                           )}
                         </div>
                       </div>
-                      <Sparkles className="w-4 h-4 text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={(e) => handleDelete(summary.id, e)}
+                          disabled={deletingId === summary.id}
+                          className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
+                          title="Delete summary"
+                        >
+                          {deletingId === summary.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="w-4 h-4" />
+                          )}
+                        </button>
+                        <Sparkles className="w-4 h-4 text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -394,12 +439,12 @@ export function SummaryModal({ isOpen, onClose, notebookId }: SummaryModalProps)
                         <FileText className="w-4 h-4" />
                         <span>{currentSummary.sourceIds.length} source{currentSummary.sourceIds.length !== 1 ? 's' : ''} used</span>
                       </div>
-                      
+
                       {currentSummary.sourceNames && currentSummary.sourceNames.length > 0 && (
                         <div className="flex flex-wrap gap-2 mb-3">
                           {currentSummary.sourceNames.map((name, index) => (
-                            <span 
-                              key={index} 
+                            <span
+                              key={index}
                               className="px-2 py-1 bg-gray-700 text-gray-300 text-xs rounded-md border border-gray-600"
                             >
                               {name}
@@ -408,7 +453,7 @@ export function SummaryModal({ isOpen, onClose, notebookId }: SummaryModalProps)
                         </div>
                       )}
                     </div>
-                    
+
                     {/* Download Buttons - Fixed loading states */}
                     <div className="flex flex-wrap gap-2 lg:flex-nowrap">
                       <button
@@ -420,7 +465,7 @@ export function SummaryModal({ isOpen, onClose, notebookId }: SummaryModalProps)
                         <Copy className="w-4 h-4" />
                         <span className="hidden sm:inline">Copy</span>
                       </button>
-                      
+
                       <button
                         onClick={() => handleDownload('txt')}
                         disabled={downloadingFormat !== null}
@@ -434,7 +479,7 @@ export function SummaryModal({ isOpen, onClose, notebookId }: SummaryModalProps)
                         )}
                         <span className="hidden sm:inline">TXT</span>
                       </button>
-                      
+
                       <button
                         onClick={() => handleDownload('md')}
                         disabled={downloadingFormat !== null}
@@ -448,7 +493,7 @@ export function SummaryModal({ isOpen, onClose, notebookId }: SummaryModalProps)
                         )}
                         <span className="hidden sm:inline">MD</span>
                       </button>
-                      
+
                       <button
                         onClick={() => handleDownload('pdf')}
                         disabled={downloadingFormat !== null}
@@ -461,6 +506,21 @@ export function SummaryModal({ isOpen, onClose, notebookId }: SummaryModalProps)
                           <FileImage className="w-4 h-4" />
                         )}
                         <span className="hidden sm:inline">PDF</span>
+                      </button>
+
+                      <div className="w-px h-8 bg-gray-700 mx-1 hidden lg:block" />
+
+                      <button
+                        onClick={() => currentSummary && handleDelete(currentSummary.id)}
+                        disabled={deletingId === currentSummary?.id}
+                        className="flex items-center gap-2 px-3 py-2 bg-gray-700 hover:bg-red-900/30 text-gray-300 hover:text-red-400 disabled:bg-gray-800 disabled:cursor-not-allowed rounded-lg transition-colors text-sm border border-transparent hover:border-red-900/50"
+                        title="Delete summary"
+                      >
+                        {deletingId === currentSummary?.id ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-4 h-4" />
+                        )}
                       </button>
                     </div>
                   </div>
